@@ -5,6 +5,7 @@ Chrome extension that polls [x.com/i/account_analytics](https://x.com/i/account_
 - **Replies today** — goal **60**
 - **Posts to timeline today** — goal **3**
 - **Verified followers** — goal **500**
+- **Verified impressions** — Original Content Rewards need **500K verified Home Timeline impressions / 90 days** (estimate)
 
 For example: **289 verified followers** and **123 replies in the 7D window**.
 
@@ -27,7 +28,11 @@ Every poll the extension opens (or reuses) `https://x.com/i/account_analytics/ov
 | Verified followers | "Verified followers" card |
 | Replies you posted | **Posts / Replies** chart (green Replies series) or `ReplyCreate` in `accountOverviewDailyQuery`. This is outbound. |
 | Posts to timeline | **Posts / Replies** chart (Posts series) or `TweetCreate` + `QuoteCreate` in `accountOverviewDailyQuery`. Original posts you published today. |
+| Verified impressions (rewards estimate) | `Displayed` rows with verified viewers from the single widest-window captured overview query (deduped per timestamp, comparison period excluded), vs the 500K / 90-day bar |
+| Verified impressions (official) | `x.com/i/jf/creators/original_content_rewards` eligibility page (protobuf-backed, read as rendered text), refreshed at most hourly |
 | Replies received | The bottom **Replies** card — shown only as a note, never on the badge |
+
+When the official count is available the popup shows it (`Official: 11.6K / 500K`) and keeps the tracker estimate as a secondary line. The estimate reads high by design: `Displayed` counts all surfaces, repeat views, and replies. X computes the qualified number (unique Premium, Home Timeline, ≥50% visible, no replies/paid/fraud) server-side.
 
 The overview **Replies** card is inbound engagement on your posts. It is not the 60/day goal.
 

@@ -290,9 +290,107 @@ export function scrapeAnalytics() {
     // The query window is anchored to UTC midnight; the selected day is the
     // UTC date of current_from_iso (matches what the dashboard shows).
     let day = null;
-    const fromIso = String(cap.url || "").match(/current_from_iso.%22(\\d{4}-\\d{2}-\\d{2})/);
-    if (fromIso) day = fromIso[1];
+    {
+      const us = String(cap.url || "");
+      const ki = us.indexOf("current_from_iso");
+      if (ki >= 0) {
+        const m = us.slice(ki, ki + 80).match(/(\d{4}-\d{2}-\d{2})/);
+        if (m) day = m[1];
+      }
+    }
     return { repliesPosted, postsPosted, verified, day };
+  }
+
+  // Verified Home Timeline impressions estimate for the rewards threshold
+  // (500K / 90 days). Uses the single captured overview payload with the
+  // widest query window: the analytics page fires one query per selected
+  // period (7D / 28D / 3M …), so summing across captures would count the
+  // same days several times over. Within that payload, Displayed rows
+  // attributed to verified viewers are summed per timestamp bucket; a bucket
+  // appearing in both current_time_series and hourly_backfill counts once
+  // (max). previous_totals is the prior comparison period — never summed.
+  // NOTE: Displayed rows don't say which surface produced the impression
+  // (Home Timeline vs profile/etc.) and don't exclude replies — X computes
+  // the official qualified number server-side. This is a progress estimate.
+  function verifiedImpressionsFromCaptures() {
+    const caps = window.__XCHROME_CAPTURES || [];
+    const perCapture = [];
+    // URLs look like ...%22from_time%22%3A%222026-06-05T00%3A00... — find
+    // the key, then the first YYYY-MM-DD shortly after it.
+    const grab = (s, keys) => {
+      for (const key of keys) {
+        let from = 0;
+        while (true) {
+          const i = s.indexOf(key, from);
+          if (i < 0) break;
+          const m = s.slice(i, i + 60).match(/(\d{4}-\d{2}-\d{2})/);
+          if (m) {
+            const t = Date.parse(`${m[1]}T00:00:00Z`);
+            if (!Number.isNaN(t)) return t;
+          }
+          from = i + key.length;
+        }
+      }
+      return null;
+    };
+    const eatInto = (buckets, entry) => {
+      if (!entry || typeof entry !== "object") return;
+      if (!/^Displayed$/i.test(String(entry.engagement_type || ""))) return;
+      const v = entry.is_engaging_user_verified;
+      const verifiedViewer = v === true || String(v).toLowerCase() === "true";
+      if (!verifiedViewer) return;
+      const c = Number(entry.count);
+      if (!Number.isFinite(c) || c < 0) return;
+      const ts = Number(entry.timestamp);
+      const key = `${Number.isFinite(ts) ? ts : "na"}|verified`;
+      const prev = buckets.get(key);
+      if (prev == null || c > prev) buckets.set(key, c);
+    };
+    const walk = (buckets, obj, depth) => {
+      if (!obj || depth > 16) return;
+      if (Array.isArray(obj)) {
+        for (let i = 0; i < obj.length; i += 1) {
+          const item = obj[i];
+          if (item && typeof item === "object" && "count" in item && "engagement_type" in item) eatInto(buckets, item);
+          else walk(buckets, item, depth + 1);
+        }
+        return;
+      }
+      if (typeof obj !== "object") return;
+      for (const value of Object.values(obj)) walk(buckets, value, depth + 1);
+    };
+    for (const cap of caps) {
+      if (!cap || !cap.data) continue;
+      const viewer = cap.data?.data?.viewer_v2?.user_results?.result;
+      const buckets = new Map();
+      if (viewer) {
+        walk(buckets, viewer.current_time_series, 1);
+        walk(buckets, viewer.hourly_backfill, 1);
+      } else {
+        walk(buckets, cap.data, 1);
+      }
+      if (!buckets.size) continue;
+      let total = 0;
+      for (const c of buckets.values()) total += c;
+      const s = String(cap.url || "");
+      const from = grab(s, ["from_time", "from_iso", "current_from_iso"]);
+      const to = grab(s, ["to_time", "to_iso", "current_to_iso"]);
+      const windowDays =
+        from != null && to != null && to > from ? Math.round((to - from) / 86_400_000) : null;
+      perCapture.push({ total: Math.round(total), windowDays, buckets: buckets.size });
+    }
+    if (!perCapture.length) return null;
+    const withWindow = perCapture.filter((c) => c.windowDays != null);
+    const best = withWindow.length
+      ? withWindow.slice().sort((a, b) => b.windowDays - a.windowDays || b.total - a.total)[0]
+      : perCapture[perCapture.length - 1];
+    return {
+      total: best.total,
+      windowDays: best.windowDays,
+      payloads: perCapture.length,
+      buckets: best.buckets,
+      perCapture: perCapture.length > 1 ? perCapture : undefined,
+    };
   }
 
   function repliesFromTooltip(scope) {
@@ -385,6 +483,7 @@ export function scrapeAnalytics() {
 
   const captured = seriesFromCaptures();
   const daily = dailyFromCaptures();
+  const verifiedImpressions = verifiedImpressionsFromCaptures();
   const chart = postsRepliesChart();
   const reactSeries = seriesFromReact(chart || document.body);
   const series = reactSeries || captured.series;
@@ -440,6 +539,7 @@ export function scrapeAnalytics() {
       : null,
     cardValues: { verifiedFollowers, repliesReceived },
     dailyQuery: daily,
+    verifiedImpressions,
     captureCount: (window.__XCHROME_CAPTURES || []).length,
   };
   console.info("[X Goals] analytics scrape details", debug);
@@ -456,8 +556,59 @@ export function scrapeAnalytics() {
     repliesSource,
     postsToday,
     postsSource,
+    verifiedImpressions: verifiedImpressions ? verifiedImpressions.total : null,
+    verifiedImpressionsWindowDays: verifiedImpressions ? verifiedImpressions.windowDays : null,
+    verifiedImpressionsSource: verifiedImpressions ? "captures" : null,
     period: selectedPeriod(),
     captureCount: (window.__XCHROME_CAPTURES || []).length,
     debug,
+  };
+}
+
+/** Scrapes the official Original Content Rewards page. Must stay self-contained. */
+export function scrapeRewards() {
+  function parseCompact(text) {
+    if (text == null) return null;
+    const s = String(text).trim().replace(/,/g, "").replace(/^\+/, "");
+    if (!s || s === "—" || s === "-") return null;
+    const m = s.match(/^(-?\d+(?:\.\d+)?)([KMB])?%?$/i);
+    if (!m) {
+      const n = Number(s);
+      return Number.isFinite(n) ? n : null;
+    }
+    const n = Number(m[1]);
+    const mul = { K: 1e3, M: 1e6, B: 1e9 }[m[2]?.toUpperCase()] || 1;
+    return n * mul;
+  }
+
+  function numberAfter(label) {
+    const body = document.body;
+    const text = body ? body.innerText || body.textContent || "" : "";
+    const i = text.indexOf(label);
+    if (i < 0) return null;
+    const m = text.slice(i + label.length, i + label.length + 120).match(/([\d,.]+(?:\.\d+)?[KMB]?)/i);
+    return m ? parseCompact(m[1]) : null;
+  }
+
+  const href = location.href;
+  const loginWall =
+    /\/i\/flow\/login|\/login\b/i.test(href) || !!document.querySelector('[data-testid="loginButton"]');
+  const text = document.body ? document.body.innerText || "" : "";
+  const onRewardsPage = /Original Content Rewards/i.test(text);
+  const loggedIn =
+    !loginWall &&
+    (!!document.querySelector('[data-testid="SideNav_AccountSwitcher_Button"]') || onRewardsPage);
+  const rewardsVerifiedFollowers = numberAfter("Have at least 500 Verified followers");
+  const rewardsImpressions90d = numberAfter(
+    "Have at least 500K Verified Home Timeline impressions in the last 90 days"
+  );
+  return {
+    ok: Boolean(loggedIn && !loginWall && rewardsImpressions90d != null),
+    loggedIn,
+    loginWall,
+    url: href,
+    title: document.title,
+    rewardsVerifiedFollowers,
+    rewardsImpressions90d,
   };
 }

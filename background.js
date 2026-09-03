@@ -1,12 +1,15 @@
 import { DEFAULTS, dayKey } from "./parse.js";
-import { scrapeAnalytics } from "./scrape.js";
+import { scrapeAnalytics, scrapeRewards } from "./scrape.js";
 
 const ALARM = "xchrome-poll";
 const ANALYTICS_URL = "https://x.com/i/account_analytics/overview";
+const REWARDS_URL = "https://x.com/i/jf/creators/original_content_rewards";
+const REWARDS_TTL_MS = 60 * 60 * 1000; // official counts move slowly; at most hourly
 const TAB_URLS = [
   "https://x.com/i/account_analytics*",
   "https://twitter.com/i/account_analytics*",
 ];
+const REWARDS_TAB_URLS = ["https://x.com/i/jf/creators*", "https://twitter.com/i/jf/creators*"];
 
 let scrapeInFlight = null;
 let lastScrapeAt = 0;
@@ -62,6 +65,9 @@ async function ensureDefaults() {
   if (current.verifiedFollowers === undefined) patch.verifiedFollowers = null;
   if (current.repliesToday === undefined) patch.repliesToday = null;
   if (current.postsToday === undefined) patch.postsToday = null;
+  if (current.verifiedImpressions === undefined) patch.verifiedImpressions = null;
+  if (current.rewardsImpressions90d === undefined) patch.rewardsImpressions90d = null;
+  if (current.rewardsVerifiedFollowers === undefined) patch.rewardsVerifiedFollowers = null;
   if (current.status === undefined) patch.status = "idle";
   if (Object.keys(patch).length) await chrome.storage.local.set(patch);
 }
@@ -141,13 +147,24 @@ async function runCollect({ reason, tabId }) {
       repliesSource: snapshot.repliesSource,
       postsToday: snapshot.postsToday,
       postsSource: snapshot.postsSource,
+      verifiedImpressions: snapshot.verifiedImpressions,
+      verifiedImpressionsWindowDays: snapshot.verifiedImpressionsWindowDays,
       period: snapshot.period,
       captureCount: snapshot.captureCount,
       debug: snapshot.debug,
     });
     const state = await persistSnapshot(snapshot);
     await renderToolbar(state);
-    return state;
+    // Official rewards counts move slowly and live on a separate page; never
+    // let that fetch fail the analytics refresh.
+    try {
+      await collectRewards();
+    } catch (err) {
+      console.warn("[X Goals] rewards refresh skipped", { error: String(err) });
+    }
+    const withRewards = await chrome.storage.local.get(null);
+    await renderToolbar(withRewards);
+    return withRewards;
   } catch (err) {
     console.warn("[X Goals] analytics refresh failed", { tabId: tab.id, error: String(err) });
     const state = await persistError(err);
@@ -167,6 +184,63 @@ async function runCollect({ reason, tabId }) {
 async function findAnalyticsTab() {
   const tabs = await chrome.tabs.query({ url: TAB_URLS });
   return tabs.find((t) => /account_analytics/i.test(t.url || "")) || null;
+}
+
+async function findRewardsTab() {
+  const tabs = await chrome.tabs.query({ url: REWARDS_TAB_URLS });
+  return tabs.find((t) => /creators\/original_content_rewards/i.test(t.url || "")) || null;
+}
+
+// Official rewards counts (protobuf-backed page, read as rendered text).
+// Throttled: values move slowly; never throws.
+async function collectRewards() {
+  const existing = await chrome.storage.local.get(["rewardsImpressions90d", "rewardsUpdatedAt"]);
+  if (
+    existing.rewardsImpressions90d != null &&
+    existing.rewardsUpdatedAt &&
+    Date.now() - existing.rewardsUpdatedAt < REWARDS_TTL_MS
+  ) {
+    return existing;
+  }
+  let tab = await findRewardsTab();
+  let created = false;
+  if (!tab) {
+    tab = await chrome.tabs.create({ url: REWARDS_URL, active: false });
+    created = true;
+  }
+  try {
+    await waitComplete(tab.id);
+    await sleep(1500);
+    const deadline = Date.now() + 20_000;
+    while (Date.now() < deadline) {
+      const fresh = await chrome.tabs.get(tab.id).catch(() => null);
+      if (!fresh) break;
+      try {
+        const [{ result } = {}] = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          world: "MAIN",
+          func: scrapeRewards,
+        });
+        if (result && !result.loginWall && result.rewardsImpressions90d != null) {
+          await chrome.storage.local.set({
+            rewardsVerifiedFollowers: result.rewardsVerifiedFollowers,
+            rewardsImpressions90d: result.rewardsImpressions90d,
+            rewardsUpdatedAt: Date.now(),
+          });
+          break;
+        }
+      } catch {
+        /* retry until deadline */
+      }
+      await sleep(2000);
+    }
+  } finally {
+    if (created && tab?.id) {
+      const fresh = await chrome.tabs.get(tab.id).catch(() => null);
+      if (fresh && !fresh.active) await chrome.tabs.remove(tab.id).catch(() => {});
+    }
+  }
+  return chrome.storage.local.get(null);
 }
 
 async function waitForSnapshot(tabId) {
@@ -192,6 +266,8 @@ async function waitForSnapshot(tabId) {
         repliesSource: result?.repliesSource,
         postsToday: result?.postsToday,
         postsSource: result?.postsSource,
+        verifiedImpressions: result?.verifiedImpressions,
+        verifiedImpressionsWindowDays: result?.verifiedImpressionsWindowDays,
         debug: result?.debug,
       });
       if (result && result.loginWall) {
@@ -257,6 +333,12 @@ async function persistSnapshot(snapshot) {
     existing.postsSource !== "received-card";
   const postsToday =
     snapshot.postsToday != null ? snapshot.postsToday : keepPosts ? existing.postsToday : null;
+  // Verified impressions accumulate across captures; keep the last known
+  // value when a scrape has no captures (e.g. markup changed mid-load).
+  const verifiedImpressions =
+    snapshot.verifiedImpressions != null ? snapshot.verifiedImpressions : existing.verifiedImpressions ?? null;
+  const verifiedImpressionsWindowDays =
+    snapshot.verifiedImpressionsWindowDays ?? existing.verifiedImpressionsWindowDays ?? null;
   const next = {
     status: "ok",
     lastError: null,
@@ -269,6 +351,12 @@ async function persistSnapshot(snapshot) {
     postsToday,
     postsSource: snapshot.postsToday != null ? snapshot.postsSource : keepPosts ? existing.postsSource : null,
     postsDayKey: today,
+    verifiedImpressions,
+    verifiedImpressionsWindowDays,
+    verifiedImpressionsSource:
+      snapshot.verifiedImpressions != null ? snapshot.verifiedImpressionsSource : existing.verifiedImpressionsSource ?? null,
+    verifiedImpressionsUpdatedAt:
+      snapshot.verifiedImpressions != null ? Date.now() : existing.verifiedImpressionsUpdatedAt ?? null,
     period: snapshot.period,
     lastUrl: snapshot.url,
     captureCount: snapshot.captureCount || 0,
@@ -282,6 +370,8 @@ async function persistSnapshot(snapshot) {
       repliesSource: snapshot.repliesSource,
       postsToday: snapshot.postsToday,
       postsSource: snapshot.postsSource,
+      verifiedImpressions: snapshot.verifiedImpressions,
+      verifiedImpressionsWindowDays: snapshot.verifiedImpressionsWindowDays,
     },
     previous: {
       verifiedFollowers: existing.verifiedFollowers,
@@ -291,6 +381,7 @@ async function persistSnapshot(snapshot) {
       postsToday: existing.postsToday,
       postsDayKey: existing.postsDayKey,
       postsSource: existing.postsSource,
+      verifiedImpressions: existing.verifiedImpressions,
     },
     keepPreviousOutboundReplies: keepOutbound,
     keepPreviousOutboundPosts: keepPosts,
@@ -300,6 +391,7 @@ async function persistSnapshot(snapshot) {
       repliesSource: next.repliesSource,
       postsToday: next.postsToday,
       postsSource: next.postsSource,
+      verifiedImpressions: next.verifiedImpressions,
     },
   });
   await chrome.storage.local.set(next);

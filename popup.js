@@ -19,12 +19,19 @@ function render(state) {
   const replies = state.repliesToday;
   const posts = state.postsToday;
   const verified = state.verifiedFollowers;
+  const impressions = state.verifiedImpressions;
+  const officialImpressions = state.rewardsImpressions90d;
+  const officialFollowers = state.rewardsVerifiedFollowers;
+  const IMPRESSION_GOAL = 500_000;
+  const shownImpressions = officialImpressions ?? impressions;
   $("replies-frac").textContent = `${fmt(replies)} / ${rg}`;
   $("posts-frac").textContent = `${fmt(posts)} / ${pg}`;
   $("verified-frac").textContent = `${fmt(verified)} / ${vg}`;
+  $("impressions-frac").textContent = `${fmtCompact(shownImpressions)} / 500K`;
   setBar("replies-bar", replies, rg);
   setBar("posts-bar", posts, pg);
   setBar("verified-bar", verified, vg);
+  setBar("impressions-bar", shownImpressions, IMPRESSION_GOAL);
 
   const hint = $("replies-hint");
   if (replies == null) {
@@ -44,6 +51,40 @@ function render(state) {
         : `Target: ${pg} posts you publish / day`;
   }
 
+  const impHint = $("impressions-hint");
+  if (impHint) {
+    if (officialImpressions != null) {
+      const pct = Math.min(100, (officialImpressions / IMPRESSION_GOAL) * 100);
+      const left = IMPRESSION_GOAL - officialImpressions;
+      const when = state.rewardsUpdatedAt ? ` · checked ${rel(state.rewardsUpdatedAt)}` : "";
+      const est = impressions != null ? ` Tracker estimate ${fmtCompact(impressions)}.` : "";
+      impHint.textContent =
+        officialImpressions >= IMPRESSION_GOAL
+          ? `Official: ${fmt(officialImpressions)} verified impressions / 90d${when} — eligible zone.${est}`
+          : `Official: ${fmt(officialImpressions)} / 500K (${pct.toFixed(1)}%, ${fmt(Math.max(0, left))} to go)${when}.${est}`;
+    } else if (impressions == null) {
+      impHint.textContent =
+        "Rewards need 500K verified Home Timeline impressions / 90 days. Waiting on analytics network captures.";
+    } else {
+      const pct = Math.min(100, (impressions / IMPRESSION_GOAL) * 100);
+      const left = IMPRESSION_GOAL - impressions;
+      const win = state.verifiedImpressionsWindowDays;
+      const cov = win != null ? ` over ~${win}d of captures` : "";
+      impHint.textContent =
+        impressions >= IMPRESSION_GOAL
+          ? `Eligible zone: ${fmt(impressions)} verified impressions${cov} (${pct.toFixed(1)}%). Official count is in Creator Studio.`
+          : `${fmt(impressions)} verified Displayed${cov} — ${fmt(left)} to go (${pct.toFixed(1)}%). Estimate; replies/surfaces not excluded.`;
+    }
+  }
+
+  const verifiedHint = $("verified-hint");
+  if (verifiedHint) {
+    verifiedHint.textContent =
+      officialFollowers != null && officialFollowers !== verified
+        ? `Target: 500 verified followers (rewards page shows ${fmt(officialFollowers)})`
+        : "Target: 500 verified followers";
+  }
+
   const status = $("status-line");
   if (state.status === "loading") status.textContent = "Reading x.com/i/account_analytics…";
   else if (state.status === "error") status.textContent = state.lastError || "Could not read analytics.";
@@ -56,6 +97,14 @@ function render(state) {
 
 function fmt(n) {
   return n == null ? "—" : String(Math.round(n));
+}
+
+function fmtCompact(n) {
+  if (n == null) return "—";
+  const v = Math.round(n);
+  if (v >= 1_000_000) return `${Math.round((v / 1_000_000) * 10) / 10}M`;
+  if (v >= 1000) return `${Math.round((v / 1000) * 10) / 10}K`;
+  return String(v);
 }
 
 function setBar(id, value, goal) {

@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import {
   dayKey,
+  extractRewardsProgress,
   isOutboundContentRow,
   outboundPostsFromRow,
   outboundRepliesFromRow,
@@ -65,4 +66,18 @@ test("ignores inbound-only reply series and reads Posts+Replies as authored repl
   );
   assert.equal(row.Replies, 47);
   assert.equal(outboundPostsFromRow(row), 5);
+});
+
+test("reads official rewards progress from eligibility page text", () => {
+  const text = [
+    "You're a few steps away from joining the Original Content Rewards Program.",
+    "Have at least 500 Verified followers",
+    "295",
+    "Have at least 500K Verified Home Timeline impressions in the last 90 days",
+    "11.6K",
+    "Does not include replies",
+  ].join("\n");
+  const got = extractRewardsProgress(text);
+  assert.equal(got.verifiedFollowers, 295);
+  assert.equal(got.impressions90d, 11600);
 });

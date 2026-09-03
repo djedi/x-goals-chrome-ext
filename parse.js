@@ -6,6 +6,9 @@ export const DEFAULTS = {
   timeZone: "America/Denver",
 };
 
+/** Fixed X Original Content Rewards entry threshold (not user-settable). */
+export const VERIFIED_IMPRESSION_GOAL = 500_000;
+
 export function dayKey(now = Date.now(), timeZone = DEFAULTS.timeZone) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone,
@@ -115,4 +118,20 @@ export function pickTodayOutboundRow(data, now = Date.now(), timeZone = DEFAULTS
     if (toDayKey(raw, timeZone) === today) return row;
   }
   return rows[rows.length - 1];
+}
+
+/** Official Original Content Rewards eligibility page (plain-text labels). */
+export function extractRewardsProgress(text) {
+  if (!text) return { verifiedFollowers: null, impressions90d: null };
+  const grab = (label) => {
+    const hay = String(text);
+    const i = hay.indexOf(label);
+    if (i < 0) return null;
+    const m = hay.slice(i + label.length, i + label.length + 120).match(/([\d,.]+(?:\.\d+)?[KMB]?)/i);
+    return m ? parseCompactNumber(m[1]) : null;
+  };
+  return {
+    verifiedFollowers: grab("Have at least 500 Verified followers"),
+    impressions90d: grab("Have at least 500K Verified Home Timeline impressions in the last 90 days"),
+  };
 }

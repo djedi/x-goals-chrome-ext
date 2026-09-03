@@ -4,10 +4,11 @@ import { readFileSync } from "node:fs";
 // Extract the scrapeAnalytics function body from scrape.js and run it in a fake
 // DOM shim with the real accountOverviewDailyQuery response captured.
 const src = readFileSync(new URL("../scrape.js", import.meta.url), "utf8");
-const inner = src
+const cut = src.indexOf("export function scrapeRewards()");
+const analyticsSrc = cut >= 0 ? src.slice(0, cut) : src;
+const inner = analyticsSrc
   .replace(/^\/\*\*[\s\S]*?\*\//, "")
-  .replace("export function scrapeAnalytics() {", "")
-  .replace(/\}\s*$/, "");
+  .replace("export function scrapeAnalytics() {", "function scrapeAnalytics() {");
 
 const payload = JSON.parse(readFileSync(new URL("./fixtures/daily-response.json", import.meta.url), "utf8"));
 
