@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy Policy — X Goals</title>
+    <meta name="description" content="Privacy policy for the X Goals Chrome extension." />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #000;
+        --card: #16181c;
+        --text: #e7e9ea;
+        --muted: #8b98a5;
+        --line: #2f3336;
+        --blue: #1d9bf0;
+        --green: #00ba7c;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        line-height: 1.6;
+      }
+      main { max-width: 760px; margin: 0 auto; padding: 48px 20px 80px; }
+      h1 { font-size: 32px; letter-spacing: -0.02em; margin: 0 0 4px; }
+      .updated { color: var(--muted); font-size: 14px; margin: 0 0 28px; }
+      h2 { font-size: 20px; margin: 32px 0 8px; color: var(--green); }
+      p, li { color: var(--text); font-size: 16px; }
+      .pill {
+        display: inline-block; font-size: 12px; font-weight: 700;
+        letter-spacing: 0.06em; text-transform: uppercase; color: var(--green);
+        border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; margin-bottom: 16px;
+      }
+      a { color: var(--blue); }
+      hr { border: none; border-top: 1px solid var(--line); margin: 32px 0; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <span class="pill">Privacy Policy</span>
+      <h1>X Goals — Privacy Policy</h1>
+      <p class="updated">Effective: September 3, 2026</p>
+
+      <p>
+        X Goals is a Chrome extension that helps you track daily reply and posting goals
+        plus verified-follower milestones from your own X (Twitter) analytics page. This
+        policy explains what the extension does with data.
+      </p>
+
+      <h2>Short version</h2>
+      <p>
+        <strong>X Goals does not collect, transmit, sell, or share any of your data.</strong>
+        Everything it reads stays inside your browser. There is no account, no server, no
+        analytics, and no advertising SDK.
+      </p>
+
+      <h2>What the extension reads</h2>
+      <p>
+        When you open the extension or on the poll interval you set, it opens (or reuses)
+        <code>x.com/i/account_analytics</code> in a background tab — the analytics page of
+        the X account you are logged into — and reads counters shown there:
+      </p>
+      <ul>
+        <li>Replies you posted today,</li>
+        <li>Posts added to your timeline today,</li>
+        <li>Verified followers, and</li>
+        <li>Verified-impression progress toward Original Content Rewards eligibility.</li>
+      </ul>
+      <p>
+        This is <em>your own account data</em>, shown to you by X on your own analytics page.
+        The extension has host access to <code>x.com</code> and <code>twitter.com</code>
+        solely so it can read that page for you.
+      </p>
+
+      <h2>Where data is stored</h2>
+      <p>
+        Your goal settings and the most recently read counters are stored
+        <strong>locally</strong> on your device using Chrome's
+        <code>chrome.storage.local</code>. This data never leaves your device and is cleared
+        if you uninstall the extension.
+      </p>
+
+      <h2>What leaves your device</h2>
+      <p>
+        Nothing. The extension makes no network requests of its own. The only requests that
+        occur are the normal ones X itself makes when its analytics page loads in the
+        background tab. No data is sent to the developer or any third party.
+      </p>
+
+      <h2>Permissions</h2>
+      <ul>
+        <li><strong>Host access to x.com / twitter.com</strong> — to open and read your own analytics page.</li>
+        <li><strong>storage</strong> — to save your goals locally.</li>
+        <li><strong>alarms</strong> — to run the background poll on a timer.</li>
+        <li><strong>tabs &amp; scripting</strong> — to open/reuse the analytics tab and read its counters.</li>
+      </ul>
+
+      <h2>Children</h2>
+      <p>
+        The extension is a general-purpose productivity tool and is not directed at
+        children. It does not knowingly collect any personal information from anyone,
+        including children.
+      </p>
+
+      <h2>Changes</h2>
+      <p>
+        If this policy changes materially, the updated version will be posted at this URL
+        with a new effective date.
+      </p>
+
+      <hr />
+      <h2>Contact</h2>
+      <p>
+        Questions about this policy or the extension? Open an issue on the
+        <a href="https://github.com/djedi/x-goals-chrome-ext" target="_blank" rel="noopener">GitHub repository</a>.
+      </p>
+    </main>
+  </body>
+</html>
