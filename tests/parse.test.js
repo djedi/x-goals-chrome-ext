@@ -6,6 +6,7 @@ import test from "node:test";
 import {
   dayKey,
   isOutboundContentRow,
+  outboundPostsFromRow,
   outboundRepliesFromRow,
   parseAnalyticsHtml,
   parseCompactNumber,
@@ -50,6 +51,8 @@ test("ignores inbound-only reply series and reads Posts+Replies as authored repl
   assert.equal(isOutboundContentRow({ replies: 27, likes: 50 }), false);
   assert.equal(outboundRepliesFromRow({ replies: 27, likes: 50 }), null);
   assert.equal(outboundRepliesFromRow({ Posts: 5, Replies: 47 }), 47);
+  assert.equal(outboundPostsFromRow({ Posts: 5, Replies: 47 }), 5);
+  assert.equal(outboundPostsFromRow({ replies: 27, likes: 50 }), null);
 
   const row = pickTodayOutboundRow(
     [
@@ -61,4 +64,5 @@ test("ignores inbound-only reply series and reads Posts+Replies as authored repl
     "America/Denver"
   );
   assert.equal(row.Replies, 47);
+  assert.equal(outboundPostsFromRow(row), 5);
 });

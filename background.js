@@ -61,15 +61,17 @@ async function ensureDefaults() {
   }
   if (current.verifiedFollowers === undefined) patch.verifiedFollowers = null;
   if (current.repliesToday === undefined) patch.repliesToday = null;
+  if (current.postsToday === undefined) patch.postsToday = null;
   if (current.status === undefined) patch.status = "idle";
   if (Object.keys(patch).length) await chrome.storage.local.set(patch);
 }
 
 async function saveSettings(settings) {
   const replyGoal = clampInt(settings.replyGoal, 1, 9999, DEFAULTS.replyGoal);
+  const postGoal = clampInt(settings.postGoal, 1, 9999, DEFAULTS.postGoal);
   const verifiedGoal = clampInt(settings.verifiedGoal, 1, 1_000_000, DEFAULTS.verifiedGoal);
   const pollMinutes = clampInt(settings.pollMinutes, 1, 120, DEFAULTS.pollMinutes);
-  await chrome.storage.local.set({ replyGoal, verifiedGoal, pollMinutes });
+  await chrome.storage.local.set({ replyGoal, postGoal, verifiedGoal, pollMinutes });
   await syncAlarm();
   const state = await chrome.storage.local.get(null);
   await renderToolbar(state);
@@ -137,6 +139,8 @@ async function runCollect({ reason, tabId }) {
       repliesToday: snapshot.repliesToday,
       repliesReceived: snapshot.repliesReceived,
       repliesSource: snapshot.repliesSource,
+      postsToday: snapshot.postsToday,
+      postsSource: snapshot.postsSource,
       period: snapshot.period,
       captureCount: snapshot.captureCount,
       debug: snapshot.debug,
@@ -186,6 +190,8 @@ async function waitForSnapshot(tabId) {
         verifiedFollowers: result?.verifiedFollowers,
         repliesToday: result?.repliesToday,
         repliesSource: result?.repliesSource,
+        postsToday: result?.postsToday,
+        postsSource: result?.postsSource,
         debug: result?.debug,
       });
       if (result && result.loginWall) {
@@ -244,6 +250,13 @@ async function persistSnapshot(snapshot) {
     existing.repliesSource !== "received-card";
   const repliesToday =
     snapshot.repliesToday != null ? snapshot.repliesToday : keepOutbound ? existing.repliesToday : null;
+  const keepPosts =
+    snapshot.postsToday == null &&
+    existing.postsDayKey === today &&
+    existing.postsSource &&
+    existing.postsSource !== "received-card";
+  const postsToday =
+    snapshot.postsToday != null ? snapshot.postsToday : keepPosts ? existing.postsToday : null;
   const next = {
     status: "ok",
     lastError: null,
@@ -253,6 +266,9 @@ async function persistSnapshot(snapshot) {
     repliesToday,
     repliesSource: snapshot.repliesToday != null ? snapshot.repliesSource : keepOutbound ? existing.repliesSource : null,
     repliesDayKey: today,
+    postsToday,
+    postsSource: snapshot.postsToday != null ? snapshot.postsSource : keepPosts ? existing.postsSource : null,
+    postsDayKey: today,
     period: snapshot.period,
     lastUrl: snapshot.url,
     captureCount: snapshot.captureCount || 0,
@@ -264,18 +280,26 @@ async function persistSnapshot(snapshot) {
       repliesToday: snapshot.repliesToday,
       repliesReceived: snapshot.repliesReceived,
       repliesSource: snapshot.repliesSource,
+      postsToday: snapshot.postsToday,
+      postsSource: snapshot.postsSource,
     },
     previous: {
       verifiedFollowers: existing.verifiedFollowers,
       repliesToday: existing.repliesToday,
       repliesDayKey: existing.repliesDayKey,
       repliesSource: existing.repliesSource,
+      postsToday: existing.postsToday,
+      postsDayKey: existing.postsDayKey,
+      postsSource: existing.postsSource,
     },
     keepPreviousOutboundReplies: keepOutbound,
+    keepPreviousOutboundPosts: keepPosts,
     saved: {
       verifiedFollowers: next.verifiedFollowers,
       repliesToday: next.repliesToday,
       repliesSource: next.repliesSource,
+      postsToday: next.postsToday,
+      postsSource: next.postsSource,
     },
   });
   await chrome.storage.local.set(next);
@@ -326,12 +350,15 @@ async function renderToolbar(state) {
 
 function titleFor(state) {
   const r = state.repliesToday;
+  const p = state.postsToday;
   const v = state.verifiedFollowers;
   const rg = state.replyGoal ?? DEFAULTS.replyGoal;
+  const pg = state.postGoal ?? DEFAULTS.postGoal;
   const vg = state.verifiedGoal ?? DEFAULTS.verifiedGoal;
   const replies = r == null ? "replies —" : `replies ${r}/${rg}`;
+  const posts = p == null ? "posts —" : `posts ${p}/${pg}`;
   const verified = v == null ? "verified —" : `verified ${v}/${vg}`;
-  return `X Goals · ${replies} · ${verified}`;
+  return `X Goals · ${replies} · ${posts} · ${verified}`;
 }
 
 function drawIcon(state) {

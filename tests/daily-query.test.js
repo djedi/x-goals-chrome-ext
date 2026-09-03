@@ -76,6 +76,8 @@ console.log("result:", JSON.stringify(
     verifiedFollowers: result.verifiedFollowers,
     repliesToday: result.repliesToday,
     repliesSource: result.repliesSource,
+    postsToday: result.postsToday,
+    postsSource: result.postsSource,
     daily: result.debug.dailyQuery,
   },
   null,
@@ -84,10 +86,13 @@ console.log("result:", JSON.stringify(
 
 // From the pasted real response: latest day (Sept 3) ReplyCreate=12,
 // earlier day (Sept 2) = 80; verified_follower_count="291"
+// Latest day has no TweetCreate/QuoteCreate rows, so posts today = 0.
 assert.equal(result.verifiedFollowers, 291, "verified followers from daily query");
 assert.equal(result.repliesToday, 12, "replies posted today = latest day ReplyCreate only (not 7-day sum)");
 assert.notEqual(result.repliesToday, 92, "must not sum multi-day ReplyCreate");
 assert.equal(result.repliesSource, "daily-query");
+assert.equal(result.postsToday, 0, "posts today = TweetCreate+QuoteCreate at latest stamp (0 when absent)");
+assert.equal(result.postsSource, "daily-query");
 assert.ok(result.loggedIn, "loggedIn via overview text");
 assert.ok(result.ok, "ok");
 

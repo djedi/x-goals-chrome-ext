@@ -3,21 +3,27 @@ const $ = (id) => document.getElementById(id);
 const refreshBtn = $("refresh");
 const openBtn = $("open-analytics");
 const replyGoal = $("reply-goal");
+const postGoal = $("post-goal");
 const verifiedGoal = $("verified-goal");
 const pollMinutes = $("poll-minutes");
 
 function render(state) {
   const rg = state.replyGoal ?? 60;
+  const pg = state.postGoal ?? 3;
   const vg = state.verifiedGoal ?? 500;
   replyGoal.value = rg;
+  postGoal.value = pg;
   verifiedGoal.value = vg;
   pollMinutes.value = state.pollMinutes ?? 5;
 
   const replies = state.repliesToday;
+  const posts = state.postsToday;
   const verified = state.verifiedFollowers;
   $("replies-frac").textContent = `${fmt(replies)} / ${rg}`;
+  $("posts-frac").textContent = `${fmt(posts)} / ${pg}`;
   $("verified-frac").textContent = `${fmt(verified)} / ${vg}`;
   setBar("replies-bar", replies, rg);
+  setBar("posts-bar", posts, pg);
   setBar("verified-bar", verified, vg);
 
   const hint = $("replies-hint");
@@ -28,6 +34,14 @@ function render(state) {
     hint.textContent = `Target: ${rg} posted / day. Analytics “Replies” card is inbound (${state.repliesReceived}) and is not counted.`;
   } else {
     hint.textContent = `Target: ${rg} replies you post / day`;
+  }
+
+  const postsHint = $("posts-hint");
+  if (postsHint) {
+    postsHint.textContent =
+      posts == null
+        ? "Waiting on the Posts/Replies chart (Posts series) or today's TweetCreate counts."
+        : `Target: ${pg} posts you publish / day`;
   }
 
   const status = $("status-line");
@@ -90,6 +104,7 @@ function queueSave() {
       type: "xchrome-save-settings",
       settings: {
         replyGoal: replyGoal.value,
+        postGoal: postGoal.value,
         verifiedGoal: verifiedGoal.value,
         pollMinutes: pollMinutes.value,
       },
@@ -99,6 +114,7 @@ function queueSave() {
 }
 
 replyGoal.addEventListener("change", queueSave);
+postGoal.addEventListener("change", queueSave);
 verifiedGoal.addEventListener("change", queueSave);
 pollMinutes.addEventListener("change", queueSave);
 

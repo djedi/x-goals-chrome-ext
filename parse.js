@@ -1,5 +1,6 @@
 export const DEFAULTS = {
   replyGoal: 60,
+  postGoal: 3,
   verifiedGoal: 500,
   pollMinutes: 5,
   timeZone: "America/Denver",
@@ -81,6 +82,14 @@ export function outboundRepliesFromRow(row) {
   if (!isOutboundContentRow(row)) return null;
   for (const key of Object.keys(row)) {
     if (/^replies$/i.test(key) && typeof row[key] === "number") return row[key];
+  }
+  return null;
+}
+
+export function outboundPostsFromRow(row) {
+  if (!isOutboundContentRow(row)) return null;
+  for (const key of Object.keys(row)) {
+    if (/^posts$/i.test(key) && typeof row[key] === "number") return row[key];
   }
   return null;
 }

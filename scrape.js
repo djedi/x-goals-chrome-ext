@@ -78,6 +78,14 @@ export function scrapeAnalytics() {
     return null;
   }
 
+  function postsFromRow(row) {
+    if (!isOutboundRow(row)) return null;
+    for (const key of Object.keys(row)) {
+      if (/^posts$/i.test(key) && typeof row[key] === "number") return row[key];
+    }
+    return null;
+  }
+
   function dayKey(now, timeZone) {
     return new Intl.DateTimeFormat("en-CA", {
       timeZone,
@@ -242,6 +250,40 @@ export function scrapeAnalytics() {
       }
       if (seen) repliesPosted = max;
     }
+    // Posts to your timeline = original posts you authored today.
+    // TweetCreate (+ QuoteCreate) rows at the latest timestamp across BOTH
+    // arrays. Missing type at the latest stamp means 0, not unknown.
+    let postsPosted = null;
+    if (entries.length) {
+      const stamps = entries
+        .map((e) => (e && Number.isFinite(Number(e.timestamp)) ? Number(e.timestamp) : null))
+        .filter((t) => t != null);
+      const todayStamp = stamps.length ? Math.max(...stamps) : null;
+      if (todayStamp != null) {
+        let maxTweet = 0;
+        let maxQuote = 0;
+        let seenTweet = false;
+        let seenQuote = false;
+        for (const entry of entries) {
+          if (!entry || Number(entry.timestamp) !== todayStamp) continue;
+          const c = Number(entry.count);
+          if (!Number.isFinite(c)) continue;
+          if (/^TweetCreate$/i.test(String(entry.engagement_type || ""))) {
+            maxTweet = Math.max(maxTweet, c);
+            seenTweet = true;
+          } else if (/^QuoteCreate$/i.test(String(entry.engagement_type || ""))) {
+            maxQuote = Math.max(maxQuote, c);
+            seenQuote = true;
+          }
+        }
+        // Only report when the latest stamp actually has timeline-post rows
+        // or when sibling ReplyCreate rows prove the stamp is "today".
+        // (Avoid inventing 0s from unrelated payloads.)
+        if (seenTweet || seenQuote || repliesPosted != null) {
+          postsPosted = (seenTweet ? maxTweet : 0) + (seenQuote ? maxQuote : 0);
+        }
+      }
+    }
     let verified = null;
     const raw = viewer.verified_follower_count;
     if (raw != null && /^\d+$/.test(String(raw).trim())) verified = Number(String(raw).trim());
@@ -250,7 +292,7 @@ export function scrapeAnalytics() {
     let day = null;
     const fromIso = String(cap.url || "").match(/current_from_iso.%22(\\d{4}-\\d{2}-\\d{2})/);
     if (fromIso) day = fromIso[1];
-    return { repliesPosted, verified, day };
+    return { repliesPosted, postsPosted, verified, day };
   }
 
   function repliesFromTooltip(scope) {
@@ -360,6 +402,12 @@ export function scrapeAnalytics() {
     repliesToday = repliesFromRow(row);
     repliesSource = repliesToday != null ? "chart-data" : null;
   }
+  let postsToday = daily && daily.postsPosted != null ? daily.postsPosted : null;
+  let postsSource = postsToday != null ? "daily-query" : null;
+  if (postsToday == null) {
+    postsToday = postsFromRow(row);
+    postsSource = postsToday != null ? "chart-data" : null;
+  }
   if (repliesToday == null) {
     const hovered = repliesFromHover(chart);
     if (hovered != null) {
@@ -406,6 +454,8 @@ export function scrapeAnalytics() {
     repliesReceived,
     repliesToday,
     repliesSource,
+    postsToday,
+    postsSource,
     period: selectedPeriod(),
     captureCount: (window.__XCHROME_CAPTURES || []).length,
     debug,
