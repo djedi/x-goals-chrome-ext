@@ -1,0 +1,14 @@
+{
+  "name": "x-goals-chrome-ext",
+  "version": "1.0.0",
+  "license": "MIT",
+  "description": "Chrome extension that reads x.com analytics and shows reply + verified follower goals.",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:djedi/x-goals-chrome-ext.git"
+  },
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  }
+}

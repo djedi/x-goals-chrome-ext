@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>X Goals</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>X Goals</h1>
+        <p id="status-line">Reading analytics…</p>
+      </div>
+      <button type="button" id="refresh" class="ghost">Refresh</button>
+    </header>
+
+    <section class="card" id="replies-card">
+      <div class="card-top">
+        <span class="label">Replies you posted</span>
+        <span class="frac" id="replies-frac">— / 60</span>
+      </div>
+      <div class="meter"><div id="replies-bar" class="bar"></div></div>
+      <p class="hint" id="replies-hint">
+        Target: 60 replies you post / day
+      </p>
+    </section>
+
+    <section class="card" id="verified-card">
+      <div class="card-top">
+        <span class="label">Verified followers</span>
+        <span class="frac" id="verified-frac">— / 500</span>
+      </div>
+      <div class="meter"><div id="verified-bar" class="bar"></div></div>
+      <p class="hint">Target: 500 verified followers</p>
+    </section>
+
+    <section class="settings">
+      <label>Reply goal <input id="reply-goal" type="number" min="1" max="9999" /></label>
+      <label>Verified goal <input id="verified-goal" type="number" min="1" max="1000000" /></label>
+      <label>Poll (min) <input id="poll-minutes" type="number" min="1" max="120" /></label>
+    </section>
+
+    <footer>
+      <button type="button" id="open-analytics">Open analytics</button>
+      <span id="updated"></span>
+    </footer>
+
+    <script src="popup.js" type="module"></script>
+  </body>
+</html>

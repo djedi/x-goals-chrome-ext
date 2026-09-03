@@ -1,0 +1,48 @@
+{
+  "manifest_version": 3,
+  "name": "X Goals",
+  "version": "1.0.1",
+  "minimum_chrome_version": "116",
+  "description": "Reads x.com/i/account_analytics on a timer and shows today's replies plus verified followers.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "X Goals",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": ["alarms", "storage", "tabs", "scripting"],
+  "host_permissions": ["https://x.com/*", "https://twitter.com/*"],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://x.com/i/account_analytics*",
+        "https://twitter.com/i/account_analytics*"
+      ],
+      "js": ["page-hook.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://x.com/i/account_analytics*",
+        "https://twitter.com/i/account_analytics*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

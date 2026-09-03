@@ -1,0 +1,73 @@
+{
+  "data": {
+    "viewer_v2": {
+      "user_results": {
+        "id": "VXNlclJlc3VsdHM6MTA3MTc5ODI=",
+        "result": {
+          "__typename": "User",
+          "author_follower_metrics": {
+            "active_followers": "517",
+            "active_verified_followers": "258"
+          },
+          "current_time_series": [
+            { "count": 28, "engagement_type": "ProfilePic", "is_engaging_user_verified": "false", "timestamp": 1788307200000 },
+            { "count": 22, "engagement_type": "ProfilePic", "is_engaging_user_verified": "true", "timestamp": 1788307200000 },
+            { "count": 1, "engagement_type": "Retweet", "is_engaging_user_verified": "true", "timestamp": 1788307200000 },
+            { "count": 32, "engagement_type": "Reply", "is_engaging_user_verified": "true", "timestamp": 1788307200000 },
+            { "count": 14, "engagement_type": "Reply", "is_engaging_user_verified": "false", "timestamp": 1788307200000 },
+            { "count": 47, "engagement_type": "Fav", "is_engaging_user_verified": "true", "timestamp": 1788307200000 },
+            { "count": 39, "engagement_type": "Fav", "is_engaging_user_verified": "false", "timestamp": 1788307200000 },
+            { "count": 1, "engagement_type": "Unfav", "is_engaging_user_verified": "false", "timestamp": 1788307200000 },
+            { "count": 3540, "engagement_type": "Displayed", "is_engaging_user_verified": "true", "timestamp": 1788307200000 },
+            { "count": 8338, "engagement_type": "Displayed", "is_engaging_user_verified": "false", "timestamp": 1788307200000 },
+            { "count": 6, "engagement_type": "Follow", "is_engaging_user_verified": "true", "timestamp": 1788307200000 },
+            { "count": 3, "engagement_type": "Follow", "is_engaging_user_verified": "false", "timestamp": 1788307200000 },
+            { "count": 1, "engagement_type": "Unfollow", "is_engaging_user_verified": "true", "timestamp": 1788307200000 },
+            { "count": 1, "engagement_type": "Unreply", "is_engaging_user_verified": "true", "timestamp": 1788307200000 },
+            { "count": 1, "engagement_type": "Unreply", "is_engaging_user_verified": "false", "timestamp": 1788307200000 },
+            { "count": 1, "engagement_type": "QuoteTweet", "is_engaging_user_verified": "true", "timestamp": 1788307200000 },
+            { "count": 1, "engagement_type": "ArchivalRetweet", "is_engaging_user_verified": "false", "timestamp": 1788307200000 },
+            { "count": 2, "engagement_type": "Bookmark", "is_engaging_user_verified": "false", "timestamp": 1788307200000 },
+            { "count": 8, "engagement_type": "TweetCreate", "is_engaging_user_verified": "true", "timestamp": 1788307200000 },
+            { "count": 1, "engagement_type": "QuoteCreate", "is_engaging_user_verified": "true", "timestamp": 1788307200000 },
+            { "count": 80, "engagement_type": "ReplyCreate", "is_engaging_user_verified": "true", "timestamp": 1788307200000 },
+            { "count": 12, "engagement_type": "ReplyCreate", "is_engaging_user_verified": "true", "timestamp": 1788393600000 },
+            { "count": 91, "engagement_type": "HomeLinger", "is_engaging_user_verified": "false", "timestamp": 1788307200000 },
+            { "count": 260, "engagement_type": "HomeLinger", "is_engaging_user_verified": "true", "timestamp": 1788307200000 }
+          ],
+          "id": "VXNlcjoxMDcxNzk4Mg==",
+          "hourly_backfill": [
+            { "count": 46, "engagement_type": "Reply", "timestamp": 1788307200000 },
+            { "count": 80, "engagement_type": "ReplyCreate", "timestamp": 1788307200000 },
+            { "count": 12, "engagement_type": "ReplyCreate", "timestamp": 1788393600000 },
+            { "count": 3, "engagement_type": "Reply", "timestamp": 1788393600000 }
+          ],
+          "legacy_current_follow_metrics": [
+            {
+              "metric_values": [
+                { "metric_type": "Follows", "metric_value": 9 },
+                { "metric_type": "Unfollows", "metric_value": 1 }
+              ],
+              "timestamp": { "iso8601_time": "2026-09-02T00:00:00Z" }
+            }
+          ],
+          "legacy_previous_follow_metrics": [
+            {
+              "metric_values": [
+                { "metric_type": "Follows", "metric_value": 7 },
+                { "metric_type": "Unfollows", "metric_value": 1 }
+              ],
+              "timestamp": { "iso8601_time": "2026-09-01T00:00:00Z" }
+            }
+          ],
+          "previous_totals": [
+            { "count": 9, "engagement_type": "ProfilePic", "is_engaging_user_verified": "false", "timestamp": 1788220800000 },
+            { "count": 60, "engagement_type": "ReplyCreate", "is_engaging_user_verified": "true", "timestamp": 1788220800000 }
+          ],
+          "relationship_counts": { "followers": 1297 },
+          "verified_follower_count": "291"
+        }
+      }
+    }
+  }
+}
