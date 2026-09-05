@@ -1,4 +1,4 @@
-# X Goals Chrome Ext
+# 𝕏 Goals Chrome Ext
 
 Chrome extension that polls [x.com/i/account_analytics](https://x.com/i/account_analytics) and puts counters on the toolbar:
 

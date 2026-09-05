@@ -490,7 +490,7 @@ function titleFor(state) {
   const replies = r == null ? "replies —" : `replies ${r}/${rg}`;
   const posts = p == null ? "posts —" : `posts ${p}/${pg}`;
   const verified = v == null ? "verified —" : `verified ${v}/${vg}`;
-  return `X Goals · ${replies} · ${posts} · ${verified}`;
+  return `𝕏 Goals · ${replies} · ${posts} · ${verified}`;
 }
 
 function drawIcon(state) {

@@ -55,7 +55,7 @@ export function buildShareCanvas(state, doc = document) {
   ctx.fillStyle = "#e7e9ea";
   ctx.font = "800 64px ui-sans-serif, system-ui, -apple-system, sans-serif";
   ctx.textBaseline = "alphabetic";
-  ctx.fillText("X Goals", 64, 108);
+  ctx.fillText("𝕏 Goals", 64, 108);
 
   const date = new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   ctx.fillStyle = "#8b98a5";
@@ -115,7 +115,7 @@ export function buildShareCanvas(state, doc = document) {
   ctx.fillStyle = "#1d9bf0";
   ctx.font = "700 26px ui-sans-serif, system-ui, sans-serif";
   ctx.textAlign = "right";
-  ctx.fillText("Get X Goals → XGoals.top", W - 64, H - 28);
+  ctx.fillText("Get 𝕏 Goals → XGoals.top", W - 64, H - 28);
   ctx.textAlign = "left";
 
   return canvas;
@@ -171,7 +171,7 @@ export function buildTrendCanvas(state, days = 30, doc = document) {
   ctx.fillStyle = "#e7e9ea";
   ctx.font = "800 60px ui-sans-serif, system-ui, -apple-system, sans-serif";
   ctx.textBaseline = "alphabetic";
-  ctx.fillText("X Goals", 64, 100);
+  ctx.fillText("𝕏 Goals", 64, 100);
 
   ctx.fillStyle = "#8b98a5";
   ctx.font = "600 28px ui-sans-serif, system-ui, sans-serif";
@@ -246,7 +246,7 @@ export function buildTrendCanvas(state, days = 30, doc = document) {
   ctx.fillStyle = "#1d9bf0";
   ctx.font = "700 26px ui-sans-serif, system-ui, sans-serif";
   ctx.textAlign = "right";
-  ctx.fillText("Get X Goals → XGoals.top", W - 64, H - 28);
+  ctx.fillText("Get 𝕏 Goals → XGoals.top", W - 64, H - 28);
   ctx.textAlign = "left";
 
   return canvas;
