@@ -3,18 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>X Goals — Chrome extension for X analytics goals</title>
-    <meta name="description" content="Track daily replies, timeline posts, verified followers and Original Content Rewards impressions from x.com analytics." />
+    <title>X Goals — Get paid for posting on 𝕏</title>
+    <meta name="description" content="The free Chrome extension that tracks your path to X creator rewards: 500 verified followers, 500K verified impressions, daily posting goals — right on your toolbar." />
+    <meta property="og:title" content="X Goals — Get paid for posting on 𝕏" />
+    <meta property="og:description" content="Track your path to X creator rewards. 500 verified followers. 500K verified impressions. Daily goals on your toolbar." />
+    <meta name="twitter:card" content="summary" />
     <style>
       :root {
         color-scheme: dark;
         --bg: #000;
+        --bg2: #0b0e11;
         --card: #16181c;
+        --card2: #1c1f24;
         --text: #e7e9ea;
         --muted: #8b98a5;
         --line: #2f3336;
         --blue: #1d9bf0;
+        --blue-hi: #55aef5;
         --green: #00ba7c;
+        --radius: 16px;
       }
       * { box-sizing: border-box; }
       body {
@@ -22,106 +29,316 @@
         background: var(--bg);
         color: var(--text);
         font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-        line-height: 1.55;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
       }
-      main { max-width: 720px; margin: 0 auto; padding: 48px 20px 64px; }
+      a { color: var(--blue); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+
+      /* ── hero ── */
+      .hero {
+        position: relative;
+        overflow: hidden;
+        padding: 96px 20px 88px;
+        text-align: center;
+        background:
+          radial-gradient(600px 320px at 50% -80px, rgba(29,155,240,.22), transparent 70%),
+          var(--bg);
+      }
+      .hero-inner { max-width: 760px; margin: 0 auto; }
       .badge {
         display: inline-block;
-        font-size: 12px;
-        font-weight: 700;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
+        font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
         color: var(--blue);
-        border: 1px solid var(--line);
+        border: 1px solid rgba(29,155,240,.4);
+        background: rgba(29,155,240,.08);
         border-radius: 999px;
-        padding: 4px 12px;
-        margin-bottom: 16px;
+        padding: 6px 14px;
+        margin-bottom: 22px;
       }
-      h1 { font-size: 40px; letter-spacing: -0.03em; margin: 0 0 8px; }
-      h2 { font-size: 22px; letter-spacing: -0.02em; margin: 40px 0 12px; }
-      p.sub { color: var(--muted); font-size: 18px; margin: 0 0 28px; }
-      .cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; }
+      h1 {
+        font-size: clamp(38px, 7vw, 64px);
+        line-height: 1.05;
+        letter-spacing: -0.035em;
+        margin: 0 0 18px;
+      }
+      h1 .grad {
+        background: linear-gradient(90deg, var(--blue-hi), var(--blue));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .sub {
+        color: var(--muted);
+        font-size: clamp(17px, 2.6vw, 21px);
+        max-width: 600px;
+        margin: 0 auto 34px;
+      }
+      .cta-row {
+        display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin-bottom: 16px;
+      }
       a.btn {
-        display: inline-block;
-        background: var(--blue);
-        color: #fff;
-        font-weight: 700;
+        display: inline-flex; align-items: center; gap: 8px;
+        background: var(--blue); color: #fff !important;
+        font-weight: 700; font-size: 17px;
+        border-radius: 999px; padding: 15px 32px;
         text-decoration: none;
-        border-radius: 999px;
-        padding: 12px 24px;
+        box-shadow: 0 8px 30px rgba(29,155,240,.35);
+        transition: transform .15s ease, box-shadow .15s ease;
       }
+      a.btn:hover { transform: translateY(-2px); box-shadow: 0 12px 36px rgba(29,155,240,.45); text-decoration: none; }
       a.btn.ghost {
-        background: transparent;
-        color: var(--blue);
+        background: transparent; color: var(--text) !important;
+        border: 1px solid var(--line); box-shadow: none;
+      }
+      a.btn.ghost:hover { border-color: var(--muted); }
+      .note { color: var(--muted); font-size: 14px; }
+
+      /* ── reward requirements band ── */
+      .reqs {
+        max-width: 860px; margin: 56px auto 0;
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;
+      }
+      .req {
+        background: linear-gradient(180deg, var(--card2), var(--card));
         border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 22px 20px;
+        text-align: center;
+      }
+      .req .num { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
+      .req .lbl { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+      /* ── sections ── */
+      section { max-width: 860px; margin: 0 auto; padding: 72px 20px 0; }
+      .eyebrow {
+        font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+        color: var(--blue); margin-bottom: 10px;
+      }
+      h2 { font-size: clamp(26px, 4vw, 36px); letter-spacing: -0.025em; line-height: 1.15; margin: 0 0 14px; }
+      .lead { color: var(--muted); font-size: 17px; max-width: 640px; margin: 0 0 30px; }
+
+      /* follow card — the money shot */
+      .follow {
+        position: relative;
+        border-radius: 20px;
+        padding: 2px;
+        background: linear-gradient(120deg, var(--blue), #7856ff, var(--blue));
+        background-size: 200% 200%;
+        animation: glow 6s ease infinite;
+        margin: 8px 0 6px;
+      }
+      @keyframes glow { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+      .follow-inner {
+        background: var(--bg2);
+        border-radius: 18px;
+        padding: 34px 32px;
+        display: flex; gap: 22px; align-items: center; flex-wrap: wrap;
+      }
+      .avatar {
+        width: 72px; height: 72px; flex: 0 0 72px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--blue), #7856ff);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 30px; font-weight: 800; color: #fff;
+      }
+      .follow-text { flex: 1 1 300px; }
+      .follow-text strong { display: block; font-size: 21px; letter-spacing: -0.01em; margin-bottom: 6px; }
+      .follow-text span { color: var(--muted); font-size: 15.5px; }
+      a.btn.follow-btn { padding: 14px 28px; white-space: nowrap; }
+
+      /* feature grid */
+      .grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px;
       }
       .card {
         background: var(--card);
         border: 1px solid var(--line);
-        border-radius: 14px;
-        padding: 16px 18px;
-        margin: 12px 0;
+        border-radius: var(--radius);
+        padding: 24px 22px;
+        transition: border-color .15s ease;
       }
-      .card strong { display: block; margin-bottom: 4px; }
-      .card span { color: var(--muted); font-size: 14px; }
-      ol.steps { padding-left: 20px; }
-      ol.steps li { margin: 10px 0; }
-      code {
+      .card:hover { border-color: rgba(29,155,240,.5); }
+      .card .icon { font-size: 22px; margin-bottom: 10px; }
+      .card strong { display: block; font-size: 17px; margin-bottom: 6px; }
+      .card span { color: var(--muted); font-size: 14.5px; }
+
+      /* steps */
+      ol.steps { list-style: none; padding: 0; margin: 0; counter-reset: step; }
+      ol.steps li {
+        counter-increment: step;
+        position: relative;
+        padding: 18px 20px 18px 64px;
         background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        margin: 12px 0;
+        font-size: 15.5px;
+      }
+      ol.steps li::before {
+        content: counter(step);
+        position: absolute; left: 18px; top: 50%; transform: translateY(-50%);
+        width: 32px; height: 32px;
+        border-radius: 50%;
+        background: rgba(29,155,240,.12);
+        border: 1px solid rgba(29,155,240,.4);
+        color: var(--blue);
+        font-weight: 800; font-size: 15px;
+        display: flex; align-items: center; justify-content: center;
+      }
+      code {
+        background: var(--card2);
         border: 1px solid var(--line);
         border-radius: 6px;
         padding: 1px 7px;
         font-size: 14px;
       }
-      .note { color: var(--muted); font-size: 14px; }
-      footer { margin-top: 48px; color: var(--muted); font-size: 13px; }
-      footer a, .card a { color: var(--blue); }
+
+      .store-banner {
+        display: flex; align-items: center; gap: 12px;
+        background: rgba(0,186,124,.08);
+        border: 1px solid rgba(0,186,124,.35);
+        border-radius: var(--radius);
+        padding: 16px 20px;
+        font-size: 15px;
+      }
+      .store-banner .dot {
+        width: 10px; height: 10px; border-radius: 50%;
+        background: var(--green);
+        box-shadow: 0 0 0 4px rgba(0,186,124,.2);
+        flex: 0 0 10px;
+      }
+
+      footer {
+        max-width: 860px; margin: 0 auto;
+        padding: 64px 20px 48px;
+        color: var(--muted); font-size: 13.5px;
+        border-top: 1px solid var(--line);
+        margin-top: 80px;
+      }
+      footer a { color: var(--blue); }
+
+      @media (max-width: 560px) {
+        .hero { padding: 64px 20px 60px; }
+        .follow-inner { padding: 26px 22px; }
+      }
     </style>
   </head>
   <body>
-    <main>
-      <span class="badge">Chrome extension · MV3</span>
-      <h1>X Goals</h1>
-      <p class="sub">
-        Your X analytics, on the toolbar: daily replies you post, timeline posts,
-        verified followers, and Original Content Rewards impressions vs the 500K bar.
-      </p>
+    <header class="hero">
+      <div class="hero-inner">
+        <span class="badge">Free Chrome extension · MV3</span>
+        <h1>Get paid for posting on &#120143;.<br /><span class="grad">We'll get you there.</span></h1>
+        <p class="sub">
+          X Goals tracks everything X's Original Content Rewards program demands —
+          verified followers, verified impressions, daily posting goals —
+          and puts your progress right on the toolbar. No dashboard hunting. No guessing.
+        </p>
+        <div class="cta-row">
+          <a class="btn" href="https://x.com/DustinDavis">Follow @DustinDavis on &#120143;</a>
+          <a class="btn ghost" href="https://github.com/djedi/x-goals-chrome-ext/archive/refs/heads/main.zip">Download the extension</a>
+        </div>
+        <p class="note">Free &amp; open source (MIT). Your analytics never leave your browser.</p>
 
-      <div class="cta-row">
-        <a class="btn" href="https://github.com/djedi/x-goals-chrome-ext/archive/refs/heads/main.zip">Download (.zip)</a>
-        <a class="btn ghost" href="https://github.com/djedi/x-goals-chrome-ext">View source</a>
+        <div class="reqs">
+          <div class="req"><div class="num">500</div><div class="lbl">verified followers</div></div>
+          <div class="req"><div class="num">500K</div><div class="lbl">verified impressions / 90 days</div></div>
+          <div class="req"><div class="num">&#36;</div><div class="lbl">X Premium active</div></div>
+        </div>
       </div>
-      <div class="card" style="border-color: var(--blue);"><strong>Chasing X creator rewards? Let's qualify together.</strong><span>Follow <a href="https://x.com/DustinDavis">@DustinDavis</a> to say thanks — and stick around. I share every rewards tip I discover on my feed so we can all get qualified.</span></div>
-      <p class="note">Free &amp; open source (MIT). Your data stays in your browser — nothing is uploaded.</p>
-      <div class="card"><strong>Awaiting approval on the Chrome Web Store</strong><span>One-click install is coming soon — until then, use the quick manual install below.</span></div>
+    </header>
 
-      <h2>Install in Chrome</h2>
-      <ol class="steps">
-        <li>Download the <strong>.zip</strong> above and unzip it.</li>
-        <li>Open <code>chrome://extensions</code> and turn on <strong>Developer mode</strong> (top right).</li>
-        <li>Click <strong>Load unpacked</strong> and select the unzipped folder that contains <code>manifest.json</code>.</li>
-        <li>Stay logged in to X in that Chrome profile, then click the toolbar icon → <strong>Refresh</strong>.</li>
-      </ol>
-      <p class="note">
-        Chrome only allows one-click installs from the Chrome Web Store, so outside the store
-        this manual 30-second setup is required. The extension polls
-        <code>x.com/i/account_analytics</code> every 5 minutes (configurable) and shows your
-        counts on the toolbar icon and popup.
+    <section>
+      <div class="eyebrow">The mutual aid society</div>
+      <h2>Creator rewards are a team sport.</h2>
+      <p class="lead">
+        The two hardest gates are 500 verified followers and 500K verified impressions —
+        and both move faster when creators boost each other. That's the whole idea here.
       </p>
+      <div class="follow">
+        <div class="follow-inner">
+          <div class="avatar">D</div>
+          <div class="follow-text">
+            <strong>Follow <a href="https://x.com/DustinDavis">@DustinDavis</a> — the builder of X Goals.</strong>
+            <span>
+              I share every creator-rewards tip I discover on my feed: what moves impressions,
+              what actually counts, what X just changed. Follow to say thanks for the extension,
+              and let's help each other get qualified. Engagement goes both ways.
+            </span>
+          </div>
+          <a class="btn follow-btn" href="https://x.com/DustinDavis">Follow</a>
+        </div>
+      </div>
+    </section>
 
-      <h2>What it tracks</h2>
-      <div class="card"><strong>Replies you posted — goal 60/day</strong><span>Outbound replies from the Posts/Replies chart or ReplyCreate counts. The inbound “Replies” card is shown only as a note.</span></div>
-      <div class="card"><strong>Timeline posts — goal 3/day</strong><span>Original posts you publish (TweetCreate + QuoteCreate), with its own daily goal.</span></div>
-      <div class="card"><strong>Verified followers — goal 500</strong><span>Live from the analytics “Verified followers” card.</span></div>
-      <div class="card"><strong>Verified impressions — 500K / 90 days</strong><span>Official Original Content Rewards count from your eligibility page when available, plus a tracker estimate from Displayed impressions.</span></div>
+    <section>
+      <div class="eyebrow">What it tracks</div>
+      <h2>Every metric that decides your payout.</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="icon">&#128101;</div>
+          <strong>Verified followers — goal 500</strong>
+          <span>Live count from your analytics "Verified followers" card. This is gate #1 for most people — watch it climb.</span>
+        </div>
+        <div class="card">
+          <div class="icon">&#128200;</div>
+          <strong>Verified impressions — 500K / 90 days</strong>
+          <span>The official Original Content Rewards number from your eligibility page, plus a rolling estimate so you're never flying blind between updates.</span>
+        </div>
+        <div class="card">
+          <div class="icon">&#128172;</div>
+          <strong>Replies you post — goal 60/day</strong>
+          <span>Replies are the fastest impression engine on X. X Goals counts your outbound replies against a daily goal.</span>
+        </div>
+        <div class="card">
+          <div class="icon">&#9998;</div>
+          <strong>Timeline posts — goal 3/day</strong>
+          <span>Original posts and quotes — the content the rewards program is actually named after. Consistency beats virality.</span>
+        </div>
+      </div>
+    </section>
 
-      <footer>
-        MIT licensed · <a href="https://github.com/djedi/x-goals-chrome-ext">djedi/x-goals-chrome-ext</a> ·
-        not affiliated with X Corp.<br />
-        If X Goals helps you, say thanks with a follow —
-        <a href="https://x.com/DustinDavis">@DustinDavis</a> on &#120143; —
-        and let's help each other qualify for creator rewards. I share tips on my feed as I discover them.
-      </footer>
-    </main>
+    <section>
+      <div class="eyebrow">Get started</div>
+      <h2>Running in under a minute.</h2>
+      <div class="store-banner">
+        <span class="dot"></span>
+        <span><strong>Awaiting approval on the Chrome Web Store.</strong> One-click install is coming — until then, the manual install below takes about 30 seconds.</span>
+      </div>
+      <div style="height:18px"></div>
+      <ol class="steps">
+        <li>Download the <a href="https://github.com/djedi/x-goals-chrome-ext/archive/refs/heads/main.zip">.zip</a> and unzip it.</li>
+        <li>Open <code>chrome://extensions</code> and turn on <strong>Developer mode</strong> (top right).</li>
+        <li>Click <strong>Load unpacked</strong> and select the folder containing <code>manifest.json</code>.</li>
+        <li>Stay logged in to X, click the toolbar icon, hit <strong>Refresh</strong> — your numbers appear.</li>
+      </ol>
+      <p class="note" style="margin-top:16px">
+        X Goals reads <code>x.com/i/account_analytics</code> in your own browser session.
+        Nothing is uploaded, nothing is proxied, nothing is sold. The
+        <a href="https://github.com/djedi/x-goals-chrome-ext">source</a> is right there — audit it yourself.
+      </p>
+    </section>
+
+    <section>
+      <div class="follow">
+        <div class="follow-inner">
+          <div class="avatar">D</div>
+          <div class="follow-text">
+            <strong>One follow. Every tip I find.</strong>
+            <span>
+              If this extension saves you time or gets you closer to rewards, the best thanks
+              is a follow — <a href="https://x.com/DustinDavis">@DustinDavis</a> on &#120143;.
+              I'll be posting what works as I work toward qualification myself.
+            </span>
+          </div>
+          <a class="btn follow-btn" href="https://x.com/DustinDavis">Follow @DustinDavis</a>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      MIT licensed · <a href="https://github.com/djedi/x-goals-chrome-ext">djedi/x-goals-chrome-ext</a> ·
+      built by <a href="https://x.com/DustinDavis">@DustinDavis</a> · not affiliated with X Corp.
+    </footer>
   </body>
 </html>
