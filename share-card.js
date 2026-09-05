@@ -112,6 +112,12 @@ export function buildShareCanvas(state, doc = document) {
   ctx.font = "500 24px ui-sans-serif, system-ui, sans-serif";
   ctx.fillText(`Goals: ${rg} replies/d · ${pg} posts/d · ${vg} verified followers`, 64, H - 28);
 
+  ctx.fillStyle = "#1d9bf0";
+  ctx.font = "700 26px ui-sans-serif, system-ui, sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText("Get X Goals → XGoals.top", W - 64, H - 28);
+  ctx.textAlign = "left";
+
   return canvas;
 }
 
@@ -236,6 +242,12 @@ export function buildTrendCanvas(state, days = 30, doc = document) {
   ctx.fillStyle = "#536471";
   ctx.font = "500 24px ui-sans-serif, system-ui, sans-serif";
   ctx.fillText(`Replies per day · last ${series.length}d`, 64, H - 28);
+
+  ctx.fillStyle = "#1d9bf0";
+  ctx.font = "700 26px ui-sans-serif, system-ui, sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText("Get X Goals → XGoals.top", W - 64, H - 28);
+  ctx.textAlign = "left";
 
   return canvas;
 }
