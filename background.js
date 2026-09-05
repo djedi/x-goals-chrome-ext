@@ -1,4 +1,4 @@
-import { DEFAULTS, dayKey } from "./parse.js";
+import { DEFAULTS, HISTORY_LIMIT_DAYS, dayKey, mergeDay, mergeSeriesHistory, pruneHistory } from "./parse.js";
 import { scrapeAnalytics, scrapeRewards } from "./scrape.js";
 
 const ALARM = "xchrome-poll";
@@ -68,6 +68,7 @@ async function ensureDefaults() {
   if (current.verifiedImpressions === undefined) patch.verifiedImpressions = null;
   if (current.rewardsImpressions90d === undefined) patch.rewardsImpressions90d = null;
   if (current.rewardsVerifiedFollowers === undefined) patch.rewardsVerifiedFollowers = null;
+  if (current.history === undefined) patch.history = {};
   if (current.status === undefined) patch.status = "idle";
   if (Object.keys(patch).length) await chrome.storage.local.set(patch);
 }
@@ -151,6 +152,7 @@ async function runCollect({ reason, tabId }) {
       verifiedImpressionsWindowDays: snapshot.verifiedImpressionsWindowDays,
       period: snapshot.period,
       captureCount: snapshot.captureCount,
+      seriesHistoryDays: snapshot.seriesHistory ? snapshot.seriesHistory.length : 0,
       debug: snapshot.debug,
     });
     const state = await persistSnapshot(snapshot);
@@ -226,6 +228,22 @@ async function collectRewards() {
             rewardsVerifiedFollowers: result.rewardsVerifiedFollowers,
             rewardsImpressions90d: result.rewardsImpressions90d,
             rewardsUpdatedAt: Date.now(),
+          });
+          const cur = await chrome.storage.local.get(["history", "timeZone"]);
+          const rday = dayKey(Date.now(), cur.timeZone || DEFAULTS.timeZone);
+          await chrome.storage.local.set({
+            history: pruneHistory(
+              mergeDay(
+                cur.history ?? {},
+                rday,
+                {
+                  rewardsImpressions: result.rewardsImpressions90d ?? null,
+                  rewardsVerified: result.rewardsVerifiedFollowers ?? null,
+                },
+                { overwrite: true }
+              ),
+              HISTORY_LIMIT_DAYS
+            ),
           });
           break;
         }
@@ -361,6 +379,27 @@ async function persistSnapshot(snapshot) {
     lastUrl: snapshot.url,
     captureCount: snapshot.captureCount || 0,
   };
+  let history = existing.history ?? {};
+  if (Array.isArray(snapshot.seriesHistory)) {
+    const backfill = {};
+    for (const row of snapshot.seriesHistory) {
+      if (!row || row.day === today) continue;
+      backfill[row.day] = { replies: row.replies ?? null, posts: row.posts ?? null };
+    }
+    history = mergeSeriesHistory(history, backfill);
+  }
+  history = mergeDay(
+    history,
+    today,
+    {
+      replies: repliesToday,
+      posts: postsToday,
+      verified: snapshot.verifiedFollowers ?? null,
+      impressions: verifiedImpressions,
+    },
+    { overwrite: true }
+  );
+  next.history = pruneHistory(history, HISTORY_LIMIT_DAYS);
   debug("persisting analytics values", {
     today,
     incoming: {
@@ -392,6 +431,7 @@ async function persistSnapshot(snapshot) {
       postsToday: next.postsToday,
       postsSource: next.postsSource,
       verifiedImpressions: next.verifiedImpressions,
+      historyDays: Object.keys(next.history ?? {}).length,
     },
   });
   await chrome.storage.local.set(next);

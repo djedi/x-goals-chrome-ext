@@ -135,3 +135,129 @@ export function extractRewardsProgress(text) {
     impressions90d: grab("Have at least 500K Verified Home Timeline impressions in the last 90 days"),
   };
 }
+
+export const HISTORY_LIMIT_DAYS = 90;
+
+export function sortedDayKeys(history) {
+  if (!history || typeof history !== "object") return [];
+  return Object.keys(history)
+    .filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k))
+    .sort();
+}
+
+export function pruneHistory(history, limit = HISTORY_LIMIT_DAYS) {
+  const keys = sortedDayKeys(history);
+  if (keys.length <= limit) return { ...(history ?? {}) };
+  const keep = new Set(keys.slice(keys.length - limit));
+  const out = {};
+  for (const k of keep) out[k] = history[k];
+  return out;
+}
+
+export function mergeDay(history, day, patch, options = {}) {
+  const { overwrite = false } = options;
+  if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return { ...(history ?? {}) };
+  if (!patch || typeof patch !== "object") return { ...(history ?? {}) };
+  const out = { ...(history ?? {}) };
+  const prev = { ...(out[day] ?? {}) };
+  let touched = false;
+  for (const key of ["replies", "posts", "verified", "impressions", "rewardsImpressions", "rewardsVerified"]) {
+    const v = patch[key];
+    if (v == null) continue;
+    if (!overwrite && prev[key] != null) continue;
+    prev[key] = v;
+    touched = true;
+  }
+  if (touched || out[day]) out[day] = prev;
+  if (out[day] && Object.keys(out[day]).length === 0) delete out[day];
+  return out;
+}
+
+export function mergeSeriesHistory(history, daysObj, options = {}) {
+  let out = { ...(history ?? {}) };
+  if (!daysObj || typeof daysObj !== "object") return out;
+  for (const [day, entry] of Object.entries(daysObj)) {
+    out = mergeDay(out, day, entry, options);
+  }
+  return pruneHistory(out);
+}
+
+export function seriesToHistory(series, timeZone = DEFAULTS.timeZone) {
+  const out = {};
+  if (!Array.isArray(series)) return out;
+  for (const row of series) {
+    if (!isOutboundContentRow(row)) continue;
+    const raw = row.date ?? row.day ?? row.x ?? row.name ?? row.label ?? row.timestamp;
+    const day = toDayKey(raw, timeZone);
+    if (!day) continue;
+    const replies = outboundRepliesFromRow(row);
+    const posts = outboundPostsFromRow(row);
+    if (replies == null && posts == null) continue;
+    out[day] = { ...(out[day] ?? {}) };
+    if (replies != null) out[day].replies = replies;
+    if (posts != null) out[day].posts = posts;
+  }
+  return out;
+}
+
+export function recentDayKeys(n, now = Date.now(), timeZone = DEFAULTS.timeZone) {
+  const out = [];
+  const seen = new Set();
+  let t = now;
+  const stop = now - (n + 3) * 86_400_000;
+  while (out.length < n && t > stop) {
+    const k = dayKey(t, timeZone);
+    if (!seen.has(k)) {
+      seen.add(k);
+      out.push(k);
+    }
+    t -= 3_600_000;
+  }
+  return out.slice(0, n).reverse();
+}
+
+export function buildTrendSeries(history, n = 30, now = Date.now(), timeZone = DEFAULTS.timeZone) {
+  const h = history ?? {};
+  return recentDayKeys(n, now, timeZone).map((day) => {
+    const e = h[day] ?? {};
+    return {
+      day,
+      replies: e.replies ?? null,
+      posts: e.posts ?? null,
+      verified: e.verified ?? null,
+      impressions: e.impressions ?? null,
+      rewardsImpressions: e.rewardsImpressions ?? null,
+      rewardsVerified: e.rewardsVerified ?? null,
+    };
+  });
+}
+
+export function summarizeTrend(series) {
+  let totalReplies = 0;
+  let totalPosts = 0;
+  let repliesDays = 0;
+  let postsDays = 0;
+  const verifiedPts = [];
+  for (const d of series ?? []) {
+    if (d.replies != null) {
+      totalReplies += d.replies;
+      repliesDays += 1;
+    }
+    if (d.posts != null) {
+      totalPosts += d.posts;
+      postsDays += 1;
+    }
+    if (d.verified != null) verifiedPts.push(d.verified);
+  }
+  const verifiedStart = verifiedPts.length ? verifiedPts[0] : null;
+  const verifiedEnd = verifiedPts.length ? verifiedPts[verifiedPts.length - 1] : null;
+  return {
+    totalReplies,
+    totalPosts,
+    repliesDays,
+    postsDays,
+    verifiedStart,
+    verifiedEnd,
+    verifiedDelta: verifiedStart != null && verifiedEnd != null ? verifiedEnd - verifiedStart : null,
+  };
+}

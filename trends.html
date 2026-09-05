@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>X Goals · Trends</title>
+    <link rel="stylesheet" href="trends.css" />
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>X Goals · Trends</h1>
+        <p id="status-line">Loading history…</p>
+      </div>
+      <div class="header-actions">
+        <div class="range" role="group" aria-label="Range">
+          <button type="button" id="range-30" class="pill on">30d</button>
+          <button type="button" id="range-90" class="pill">90d</button>
+        </div>
+        <button type="button" id="share-trends">Share</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="card">
+        <div class="card-top">
+          <span class="label">Replies posted per day</span>
+          <span class="frac" id="replies-total">—</span>
+        </div>
+        <canvas id="chart-replies"></canvas>
+        <p class="hint" id="replies-note"></p>
+      </section>
+
+      <section class="card">
+        <div class="card-top">
+          <span class="label">Posts published per day</span>
+          <span class="frac" id="posts-total">—</span>
+        </div>
+        <canvas id="chart-posts"></canvas>
+        <p class="hint" id="posts-note"></p>
+      </section>
+
+      <section class="card">
+        <div class="card-top">
+          <span class="label">Verified followers</span>
+          <span class="frac" id="verified-delta">—</span>
+        </div>
+        <canvas id="chart-verified"></canvas>
+        <p class="hint" id="verified-note"></p>
+      </section>
+
+      <section class="card">
+        <div class="card-top">
+          <span class="label">Verified impressions</span>
+          <span class="frac" id="impressions-last">—</span>
+        </div>
+        <canvas id="chart-impressions"></canvas>
+        <p class="hint" id="impressions-note"></p>
+      </section>
+    </main>
+
+    <footer>
+      <span id="updated"></span>
+      <span id="share-note"></span>
+    </footer>
+
+    <script src="trends.js" type="module"></script>
+  </body>
+</html>

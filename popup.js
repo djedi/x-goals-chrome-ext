@@ -1,7 +1,11 @@
+import { copyShareImage } from "./share-card.js";
+
 const $ = (id) => document.getElementById(id);
 
 const refreshBtn = $("refresh");
 const openBtn = $("open-analytics");
+const shareBtn = $("share");
+const trendsBtn = $("open-trends");
 const replyGoal = $("reply-goal");
 const postGoal = $("post-goal");
 const verifiedGoal = $("verified-goal");
@@ -143,6 +147,23 @@ refreshBtn.addEventListener("click", async () => {
 
 openBtn.addEventListener("click", async () => {
   await chrome.tabs.create({ url: "https://x.com/i/account_analytics/overview" });
+});
+
+trendsBtn.addEventListener("click", async () => {
+  await chrome.tabs.create({ url: chrome.runtime.getURL("trends.html") });
+});
+
+shareBtn.addEventListener("click", async () => {
+  shareBtn.disabled = true;
+  try {
+    const state = await chrome.storage.local.get(null);
+    const { outcome } = await copyShareImage(state);
+    $("updated").textContent = outcome === "copied" ? "Copied — paste into X" : "Saved PNG — attach it on X";
+  } catch {
+    $("status-line").textContent = "Share failed — try again";
+  } finally {
+    shareBtn.disabled = false;
+  }
 });
 
 let saveTimer = null;

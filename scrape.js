@@ -110,8 +110,7 @@ export function scrapeAnalytics() {
     if (!Array.isArray(data) || !data.length) return { row: null, decision: "no-series", candidates: [] };
     const rows = data.filter(isOutboundRow);
     if (!rows.length) return { row: null, decision: "no-outbound-rows", candidates: [] };
-    const tz = "America/Denver";
-    const today = dayKey(Date.now(), tz);
+    const tz = "America/Denver";    const today = dayKey(Date.now(), tz);
     const candidates = rows.map((row, index) => {
       const raw = row.date ?? row.day ?? row.x ?? row.name ?? row.label ?? row.timestamp;
       return {
@@ -128,6 +127,25 @@ export function scrapeAnalytics() {
       }
     }
     return { row: rows[rows.length - 1], decision: "fell-back-to-last-row", candidates };
+  }
+
+  function seriesHistoryFrom(data) {
+    if (!Array.isArray(data) || !data.length) return [];
+    const tz = "America/Denver";
+    const byDay = {};
+    for (const row of data) {
+      if (!isOutboundRow(row)) continue;
+      const raw = row.date ?? row.day ?? row.x ?? row.name ?? row.label ?? row.timestamp;
+      const day = toDayKey(raw, tz);
+      if (!day) continue;
+      const replies = repliesFromRow(row);
+      const posts = postsFromRow(row);
+      if (replies == null && posts == null) continue;
+      byDay[day] = { day, replies: replies ?? null, posts: posts ?? null };
+    }
+    return Object.values(byDay)
+      .sort((a, b) => (a.day < b.day ? -1 : 1))
+      .slice(-90);
   }
 
   function selectedPeriod() {
@@ -489,6 +507,7 @@ export function scrapeAnalytics() {
   const series = reactSeries || captured.series;
   const picked = pickTodayRow(series);
   const row = picked.row;
+  const seriesHistory = seriesHistoryFrom(series);
   const verifiedFollowers =
     (daily && daily.verified != null ? daily.verified : null) ??
     cardValue("Verified followers") ??
@@ -539,7 +558,9 @@ export function scrapeAnalytics() {
       : null,
     cardValues: { verifiedFollowers, repliesReceived },
     dailyQuery: daily,
+    dailyQuery: daily,
     verifiedImpressions,
+    seriesHistoryDays: seriesHistory.length,
     captureCount: (window.__XCHROME_CAPTURES || []).length,
   };
   console.info("[X Goals] analytics scrape details", debug);
@@ -559,6 +580,7 @@ export function scrapeAnalytics() {
     verifiedImpressions: verifiedImpressions ? verifiedImpressions.total : null,
     verifiedImpressionsWindowDays: verifiedImpressions ? verifiedImpressions.windowDays : null,
     verifiedImpressionsSource: verifiedImpressions ? "captures" : null,
+    seriesHistory,
     period: selectedPeriod(),
     captureCount: (window.__XCHROME_CAPTURES || []).length,
     debug,

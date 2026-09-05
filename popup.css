@@ -156,6 +156,17 @@ footer {
   gap: 8px;
 }
 
+.actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+button.wide {
+  width: 100%;
+  margin: 0 0 8px;
+}
+
 #updated {
   color: var(--muted);
   font-size: 11px;

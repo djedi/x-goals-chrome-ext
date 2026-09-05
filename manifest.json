@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "X Goals",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "minimum_chrome_version": "116",
   "description": "Reads x.com/i/account_analytics on a timer and shows today's replies plus verified followers.",
   "action": {
@@ -24,7 +24,7 @@
     "service_worker": "background.js",
     "type": "module"
   },
-  "permissions": ["alarms", "storage", "tabs", "scripting"],
+  "permissions": ["alarms", "storage", "tabs", "scripting", "clipboardWrite"],
   "host_permissions": ["https://x.com/*", "https://twitter.com/*"],
   "content_scripts": [
     {
