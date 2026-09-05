@@ -149,8 +149,9 @@
 
       /* feature grid */
       .grid {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px;
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px;
       }
+      @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
       .card {
         background: var(--card);
         border: 1px solid var(--line);
@@ -159,7 +160,15 @@
         transition: border-color .15s ease;
       }
       .card:hover { border-color: rgba(29,155,240,.5); }
-      .card .icon { font-size: 22px; margin-bottom: 10px; }
+      .card .icon {
+        width: 40px; height: 40px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 20px;
+        background: rgba(29,155,240,.1);
+        border: 1px solid rgba(29,155,240,.3);
+        border-radius: 12px;
+        margin-bottom: 12px;
+      }
       .card strong { display: block; font-size: 17px; margin-bottom: 6px; }
       .card span { color: var(--muted); font-size: 14.5px; }
 
@@ -227,7 +236,7 @@
   <body>
     <header class="hero">
       <div class="hero-inner">
-        <span class="badge">Free Chrome extension · MV3</span>
+        <span class="badge">Free Chrome extension</span>
         <h1>Get paid for posting on &#120143;.<br /><span class="grad">We'll get you there.</span></h1>
         <p class="sub">
           X Goals tracks everything X's Original Content Rewards program demands —
@@ -322,16 +331,15 @@
     <section>
       <div class="follow">
         <div class="follow-inner">
-          <div class="avatar">D</div>
+          <div class="avatar">&#120143;</div>
           <div class="follow-text">
-            <strong>One follow. Every tip I find.</strong>
+            <strong>Ready to start qualifying?</strong>
             <span>
-              If this extension saves you time or gets you closer to rewards, the best thanks
-              is a follow — <a href="https://x.com/DustinDavis">@DustinDavis</a> on &#120143;.
-              I'll be posting what works as I work toward qualification myself.
+              Install X Goals, follow <a href="https://x.com/DustinDavis">@DustinDavis</a> for the tips feed,
+              and go earn it. Your first refresh takes ten seconds.
             </span>
           </div>
-          <a class="btn follow-btn" href="https://x.com/DustinDavis">Follow @DustinDavis</a>
+          <a class="btn follow-btn" href="https://github.com/djedi/x-goals-chrome-ext/archive/refs/heads/main.zip">Download free</a>
         </div>
       </div>
     </section>
