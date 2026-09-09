@@ -138,6 +138,62 @@ export function extractRewardsProgress(text) {
 
 export const HISTORY_LIMIT_DAYS = 90;
 
+/**
+ * Merge a fresh scrape snapshot over stored metrics without letting a
+ * partial snapshot clobber good values. Scrapes routinely arrive partial:
+ * network captures (replies/posts) resolve before DOM cards (verified
+ * followers) on a fresh page load, and a fresh load only has narrow-window
+ * captures for the impressions estimate.
+ * - Daily counts (replies/posts) are kept only when they belong to `today`.
+ * - Verified followers is cumulative, so the last known count is always kept.
+ * - The impressions estimate scales with the captured query window, so a
+ *   narrower-window total never replaces a wider-window estimate.
+ */
+export function mergeSnapshotMetrics(existing = {}, snapshot = {}, today, now = Date.now()) {
+  const e = existing ?? {};
+  const s = snapshot ?? {};
+
+  const keepReplies = s.repliesToday == null && e.repliesDayKey === today && e.repliesToday != null;
+  const repliesToday = s.repliesToday ?? (keepReplies ? e.repliesToday : null);
+  const repliesSource =
+    s.repliesToday != null ? (s.repliesSource ?? null) : keepReplies ? (e.repliesSource ?? null) : null;
+
+  const keepPosts = s.postsToday == null && e.postsDayKey === today && e.postsToday != null;
+  const postsToday = s.postsToday ?? (keepPosts ? e.postsToday : null);
+  const postsSource =
+    s.postsToday != null ? (s.postsSource ?? null) : keepPosts ? (e.postsSource ?? null) : null;
+
+  const verifiedFollowers = s.verifiedFollowers ?? e.verifiedFollowers ?? null;
+
+  const incomingVI = s.verifiedImpressions;
+  const incomingWin = s.verifiedImpressionsWindowDays;
+  const storedVI = e.verifiedImpressions ?? null;
+  const storedWin = e.verifiedImpressionsWindowDays ?? null;
+  const narrowDowngrade =
+    incomingVI != null && storedVI != null && incomingWin != null && storedWin != null && incomingWin < storedWin;
+  const adoptVI = incomingVI != null && !narrowDowngrade;
+  const verifiedImpressions = adoptVI ? incomingVI : storedVI;
+  const verifiedImpressionsWindowDays = adoptVI ? (incomingWin ?? storedWin) : storedWin;
+  const verifiedImpressionsSource = adoptVI
+    ? (s.verifiedImpressionsSource ?? e.verifiedImpressionsSource ?? null)
+    : (e.verifiedImpressionsSource ?? null);
+  const verifiedImpressionsUpdatedAt = adoptVI ? now : (e.verifiedImpressionsUpdatedAt ?? null);
+
+  return {
+    repliesToday,
+    repliesSource,
+    postsToday,
+    postsSource,
+    verifiedFollowers,
+    verifiedImpressions,
+    verifiedImpressionsWindowDays,
+    verifiedImpressionsSource,
+    verifiedImpressionsUpdatedAt,
+    keepReplies,
+    keepPosts,
+  };
+}
+
 export function sortedDayKeys(history) {
   if (!history || typeof history !== "object") return [];
   return Object.keys(history)

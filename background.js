@@ -1,4 +1,4 @@
-import { DEFAULTS, HISTORY_LIMIT_DAYS, dayKey, mergeDay, mergeSeriesHistory, pruneHistory } from "./parse.js";
+import { DEFAULTS, HISTORY_LIMIT_DAYS, dayKey, mergeDay, mergeSeriesHistory, mergeSnapshotMetrics, pruneHistory } from "./parse.js";
 import { scrapeAnalytics, scrapeRewards } from "./scrape.js";
 
 const ALARM = "xchrome-poll";
@@ -327,6 +327,7 @@ async function collectRewards() {
 async function waitForSnapshot(tabId) {
   await waitComplete(tabId);
   let last = null;
+  let best = null;
   let loginWallStreak = 0;
   const deadline = Date.now() + 45_000;
   while (Date.now() < deadline) {
@@ -359,18 +360,26 @@ async function waitForSnapshot(tabId) {
         last = result;
         if (loginWallStreak >= 3) throw new Error("Log in to X, then refresh.");
       } else loginWallStreak = 0;
-      // Degrade gracefully: when X changes markup the verified-followers card
-      // can read null and would block replies from ever refreshing. Accept a
-      // snapshot on any logged-in page that produced at least one metric.
+      // Prefer a complete snapshot: on a fresh page load the network
+      // captures (replies/posts) resolve before the DOM cards (verified
+      // followers), so the first partial read must not win. Track the best
+      // partial and only fall back to it at the deadline.
       const hasReplies = result?.repliesToday != null;
       const hasVerified = result?.verifiedFollowers != null;
-      if (result && result.loggedIn && (hasReplies || hasVerified)) return result;
+      if (result && result.loggedIn && (hasReplies || hasVerified)) {
+        const score = (hasReplies ? 1 : 0) + (hasVerified ? 1 : 0);
+        const bestScore =
+          (best?.repliesToday != null ? 1 : 0) + (best?.verifiedFollowers != null ? 1 : 0);
+        if (!best || score > bestScore) best = result;
+        if (hasReplies && hasVerified) return result;
+      }
     } catch (err) {
       last = { error: String(err && err.message ? err.message : err) };
       console.warn("[X Goals] analytics scrape attempt threw", { tabId, error: last.error });
     }
     await sleep(2000);
   }
+  if (best) return best;
   if (last && last.verifiedFollowers != null) return last;
   throw new Error(
     last && last.error
@@ -405,44 +414,26 @@ async function waitComplete(tabId) {
 async function persistSnapshot(snapshot) {
   const existing = await chrome.storage.local.get(null);
   const today = dayKey(Date.now(), existing.timeZone || DEFAULTS.timeZone);
-  const keepOutbound =
-    snapshot.repliesToday == null &&
-    existing.repliesDayKey === today &&
-    existing.repliesSource &&
-    existing.repliesSource !== "received-card";
-  const repliesToday =
-    snapshot.repliesToday != null ? snapshot.repliesToday : keepOutbound ? existing.repliesToday : null;
-  const keepPosts =
-    snapshot.postsToday == null &&
-    existing.postsDayKey === today &&
-    existing.postsSource &&
-    existing.postsSource !== "received-card";
-  const postsToday =
-    snapshot.postsToday != null ? snapshot.postsToday : keepPosts ? existing.postsToday : null;
-  // Verified impressions accumulate across captures; keep the last known
-  // value when a scrape has no captures (e.g. markup changed mid-load).
-  const verifiedImpressions =
-    snapshot.verifiedImpressions != null ? snapshot.verifiedImpressions : existing.verifiedImpressions ?? null;
-  const verifiedImpressionsWindowDays =
-    snapshot.verifiedImpressionsWindowDays ?? existing.verifiedImpressionsWindowDays ?? null;
+  // Null-safe merge: a partial snapshot (fresh page load, slow card) must
+  // never wipe the metrics captured by an earlier complete one.
+  const merged = mergeSnapshotMetrics(existing, snapshot, today);
+  const { repliesToday, postsToday } = merged;
   const next = {
     status: "ok",
     lastError: null,
     lastSuccessAt: Date.now(),
-    verifiedFollowers: snapshot.verifiedFollowers,
+    verifiedFollowers: merged.verifiedFollowers,
     repliesReceived: snapshot.repliesReceived,
     repliesToday,
-    repliesSource: snapshot.repliesToday != null ? snapshot.repliesSource : keepOutbound ? existing.repliesSource : null,
+    repliesSource: merged.repliesSource,
     repliesDayKey: today,
     postsToday,
-    postsSource: snapshot.postsToday != null ? snapshot.postsSource : keepPosts ? existing.postsSource : null,
+    postsSource: merged.postsSource,
     postsDayKey: today,
-    verifiedImpressions,
-    verifiedImpressionsWindowDays,
-    verifiedImpressionsSource:
-      snapshot.verifiedImpressions != null ? snapshot.verifiedImpressionsSource : existing.verifiedImpressionsSource ?? null,
-    verifiedImpressionsUpdatedAt:
-      snapshot.verifiedImpressions != null ? Date.now() : existing.verifiedImpressionsUpdatedAt ?? null,
+    verifiedImpressions: merged.verifiedImpressions,
+    verifiedImpressionsWindowDays: merged.verifiedImpressionsWindowDays,
+    verifiedImpressionsSource: merged.verifiedImpressionsSource,
+    verifiedImpressionsUpdatedAt: merged.verifiedImpressionsUpdatedAt,
     period: snapshot.period,
     lastUrl: snapshot.url,
     captureCount: snapshot.captureCount || 0,
@@ -462,8 +453,8 @@ async function persistSnapshot(snapshot) {
     {
       replies: repliesToday,
       posts: postsToday,
-      verified: snapshot.verifiedFollowers ?? null,
-      impressions: verifiedImpressions,
+      verified: merged.verifiedFollowers ?? null,
+      impressions: merged.verifiedImpressions ?? null,
     },
     { overwrite: true }
   );
@@ -490,8 +481,8 @@ async function persistSnapshot(snapshot) {
       postsSource: existing.postsSource,
       verifiedImpressions: existing.verifiedImpressions,
     },
-    keepPreviousOutboundReplies: keepOutbound,
-    keepPreviousOutboundPosts: keepPosts,
+    keepPreviousOutboundReplies: merged.keepReplies,
+    keepPreviousOutboundPosts: merged.keepPosts,
     saved: {
       verifiedFollowers: next.verifiedFollowers,
       repliesToday: next.repliesToday,
