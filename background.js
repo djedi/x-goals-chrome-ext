@@ -124,37 +124,54 @@ async function runCollect({ reason, tabId }) {
   await renderToolbar(await chrome.storage.local.get(null));
 
   let created = false;
-  let tab = tabId ? await chrome.tabs.get(tabId).catch(() => null) : null;
-  if (!tab) tab = await findAnalyticsTab();
-  if (!tab) {
-    tab = await chrome.tabs.create({ url: ANALYTICS_URL, active: false });
-    created = true;
-  }
+  let tab = tabId ? await getAnalyticsTab(tabId).catch(() => null) : null;
+  if (!tab) tab = (await findAnalyticsTabs())[0] || null;
   debug("analytics tab selected", {
     reason,
-    tabId: tab.id,
-    url: tab.url,
-    status: tab.status,
+    tabId: tab?.id,
+    url: tab?.url,
+    status: tab?.status,
     created,
   });
 
   try {
-    const snapshot = await waitForSnapshot(tab.id);
-    debug("analytics snapshot accepted", {
-      tabId: tab.id,
-      verifiedFollowers: snapshot.verifiedFollowers,
-      repliesToday: snapshot.repliesToday,
-      repliesReceived: snapshot.repliesReceived,
-      repliesSource: snapshot.repliesSource,
-      postsToday: snapshot.postsToday,
-      postsSource: snapshot.postsSource,
-      verifiedImpressions: snapshot.verifiedImpressions,
-      verifiedImpressionsWindowDays: snapshot.verifiedImpressionsWindowDays,
-      period: snapshot.period,
-      captureCount: snapshot.captureCount,
-      seriesHistoryDays: snapshot.seriesHistory ? snapshot.seriesHistory.length : 0,
-      debug: snapshot.debug,
-    });
+    // Fast path: read the already-open analytics tab exactly as it is right
+    // now. No waiting for load, no extra background tab. When the user is
+    // sitting on the analytics page this usually succeeds immediately.
+    let snapshot = tab ? await tryImmediateSnapshot(tab.id) : null;
+    if (snapshot) {
+      debug("analytics snapshot from open tab", {
+        tabId: tab.id,
+        verifiedFollowers: snapshot.verifiedFollowers,
+        repliesToday: snapshot.repliesToday,
+        repliesSource: snapshot.repliesSource,
+        postsToday: snapshot.postsToday,
+        postsSource: snapshot.postsSource,
+      });
+    } else {
+      if (tab) debug("open-tab fast read missed, falling back to wait/poll", { tabId: tab.id });
+      if (!tab) {
+        tab = await chrome.tabs.create({ url: ANALYTICS_URL, active: false });
+        created = true;
+        debug("created background analytics tab", { tabId: tab.id });
+      }
+      snapshot = await waitForSnapshot(tab.id);
+      debug("analytics snapshot accepted", {
+        tabId: tab.id,
+        verifiedFollowers: snapshot.verifiedFollowers,
+        repliesToday: snapshot.repliesToday,
+        repliesReceived: snapshot.repliesReceived,
+        repliesSource: snapshot.repliesSource,
+        postsToday: snapshot.postsToday,
+        postsSource: snapshot.postsSource,
+        verifiedImpressions: snapshot.verifiedImpressions,
+        verifiedImpressionsWindowDays: snapshot.verifiedImpressionsWindowDays,
+        period: snapshot.period,
+        captureCount: snapshot.captureCount,
+        seriesHistoryDays: snapshot.seriesHistory ? snapshot.seriesHistory.length : 0,
+        debug: snapshot.debug,
+      });
+    }
     const state = await persistSnapshot(snapshot);
     await renderToolbar(state);
     // Official rewards counts move slowly and live on a separate page; never
@@ -168,7 +185,7 @@ async function runCollect({ reason, tabId }) {
     await renderToolbar(withRewards);
     return withRewards;
   } catch (err) {
-    console.warn("[X Goals] analytics refresh failed", { tabId: tab.id, error: String(err) });
+    console.warn("[X Goals] analytics refresh failed", { tabId: tab?.id, error: String(err) });
     const state = await persistError(err);
     await renderToolbar(state);
     return state;
@@ -183,9 +200,55 @@ async function runCollect({ reason, tabId }) {
   }
 }
 
-async function findAnalyticsTab() {
-  const tabs = await chrome.tabs.query({ url: TAB_URLS });
-  return tabs.find((t) => /account_analytics/i.test(t.url || "")) || null;
+function isAnalyticsUrl(url) {
+  return /account_analytics/i.test(url || "");
+}
+
+// The sender tab of a page ping, but only when it really is an analytics tab
+// (the ping can arrive from a stale SPA navigation where tab.url lags).
+async function getAnalyticsTab(tabId) {
+  const tab = await chrome.tabs.get(tabId).catch(() => null);
+  if (!tab) return null;
+  const url = `${tab.url || ""} ${tab.pendingUrl || ""}`;
+  return isAnalyticsUrl(url) ? tab : null;
+}
+
+// Every open analytics tab, most useful first: the visible one, then the
+// most recently used. Falls back to scanning all x.com tabs because
+// tabs.query({ url }) can miss tabs mid-navigation (tab.url lags behind the
+// SPA) or with query/hash variations.
+async function findAnalyticsTabs() {
+  const byPattern = await chrome.tabs.query({ url: TAB_URLS }).catch(() => []);
+  const allX = await chrome.tabs
+    .query({ url: ["https://x.com/*", "https://twitter.com/*"] })
+    .catch(() => []);
+  const seen = new Map();
+  for (const t of [...byPattern, ...allX]) {
+    if (t?.id == null || seen.has(t.id)) continue;
+    if (isAnalyticsUrl(`${t.url || ""} ${t.pendingUrl || ""}`)) seen.set(t.id, t);
+  }
+  const tabs = [...seen.values()];
+  tabs.sort((a, b) => Number(b.active || false) - Number(a.active || false) || (b.lastAccessed || 0) - (a.lastAccessed || 0));
+  return tabs;
+}
+
+// One immediate read of an already-open tab: no waiting for load, no
+// reload, no polling. Returns the snapshot or null when the tab has nothing
+// usable yet (never throws — callers fall back to waitForSnapshot).
+async function tryImmediateSnapshot(tabId) {
+  try {
+    const [{ result } = {}] = await chrome.scripting.executeScript({
+      target: { tabId },
+      world: "MAIN",
+      func: scrapeAnalytics,
+    });
+    if (!result || result.loginWall || !result.loggedIn) return null;
+    if (result.repliesToday == null && result.verifiedFollowers == null) return null;
+    return result;
+  } catch (err) {
+    debug("open-tab fast read threw", { tabId, error: String(err) });
+    return null;
+  }
 }
 
 async function findRewardsTab() {
@@ -264,6 +327,7 @@ async function collectRewards() {
 async function waitForSnapshot(tabId) {
   await waitComplete(tabId);
   let last = null;
+  let loginWallStreak = 0;
   const deadline = Date.now() + 45_000;
   while (Date.now() < deadline) {
     const tab = await chrome.tabs.get(tabId).catch(() => null);
@@ -289,8 +353,12 @@ async function waitForSnapshot(tabId) {
         debug: result?.debug,
       });
       if (result && result.loginWall) {
-        throw new Error("Log in to X, then refresh.");
-      }
+        // Fresh tabs can flash a login URL mid-redirect; only fail when the
+        // wall persists across consecutive polls.
+        loginWallStreak += 1;
+        last = result;
+        if (loginWallStreak >= 3) throw new Error("Log in to X, then refresh.");
+      } else loginWallStreak = 0;
       // Degrade gracefully: when X changes markup the verified-followers card
       // can read null and would block replies from ever refreshing. Accept a
       // snapshot on any logged-in page that produced at least one metric.
